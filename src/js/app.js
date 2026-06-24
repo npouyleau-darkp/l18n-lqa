@@ -569,6 +569,7 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
 
     const teamsBodyText = buildTeamsBodyText(isTriggeredByTimeout, lang);
 
+    const isRtlSummary = /^ar/i.test(lang);
     for (let i = 1; i <= 9; i++) {
         const field = document.getElementById(`q${i}`);
         const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
@@ -583,6 +584,12 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
         const aLine = document.createElement('div');
         aLine.className = 'summary-a';
         aLine.textContent = targetVal || EN_COMMON['payload.noResponseFallback'];
+
+        // Section B (q5-7) and q9 contain target-language text: apply matching direction.
+        // RTL for Arabic; "auto" for all others (handles mixed target+English correctly).
+        if ([5, 6, 7, 9].includes(i)) {
+            aLine.setAttribute('dir', isRtlSummary ? 'rtl' : 'auto');
+        }
 
         elementBlock.appendChild(qLine);
         elementBlock.appendChild(aLine);
@@ -840,6 +847,13 @@ document.addEventListener('paste', (e) => {
 });
 
 // 2. Paste/rapid-input flood guard
+// IME composition flag: exempts CJK input (Chinese/Japanese/Korean) from the flood guard.
+// compositionend fires before or after input depending on the browser/OS; the setTimeout
+// ensures isComposing is cleared after the input handler runs.
+let isComposing = false;
+document.addEventListener('compositionstart', () => { isComposing = true; });
+document.addEventListener('compositionend',   () => { setTimeout(() => { isComposing = false; }, 0); });
+
 document.addEventListener('input', (e) => {
     if (!isTestActive) return;
 
@@ -850,7 +864,9 @@ document.addEventListener('input', (e) => {
         const absolutePreviousLength = previousTextLengthsStore[currentFieldId] || 0;
         const lengthDelta = currentStringValue.length - absolutePreviousLength;
 
-        if (e.inputType === 'insertFromPaste' || lengthDelta > 4) {
+        // isComposing: skip flood guard during IME composition (CJK word confirmation).
+        // Threshold 50: safety net for massive pastes not caught by insertFromPaste.
+        if (!isComposing && (e.inputType === 'insertFromPaste' || lengthDelta > 50)) {
             e.preventDefault();
             targetField.value = EN_COMMON['security.pasteRestrictedMsg'];
             previousTextLengthsStore[currentFieldId] = targetField.value.length;
