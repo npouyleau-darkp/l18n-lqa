@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <noscript>
+        <div class="noscript-hardlock">
+            <h1>JavaScript Required</h1>
+            <p>Security compliance protocols require JavaScript execution to be active to view and complete this assessment.</p>
+        </div>
+    </noscript>
+    <!-- noscript text stays hardcoded by necessity: injectEnCommonTexts() never runs here. -->
+
+    <div class="multitab-hardlock" id="securityHardlockScreen">
+        <h1 id="securityHardlockTitle" data-i18n="security.defaultTitle"></h1>
+        <p id="securityHardlockReason" data-i18n="security.defaultReason"></p>
+    </div>
+
+    <div id="mainApplicationWrapper">
+<div style="position: fixed; bottom: 20px; left: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px;">
+    <button type="button" id="qaResetBtn" onclick="resetQASession()" style="background-color: #dc2626; color: white; padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background 0.2s;" onmouseover="this.style.backgroundColor='#b91c1c'" onmouseout="this.style.backgroundColor='#dc2626'" data-i18n="buttons.resetQA"></button>
+    <button type="button" class="theme-toggle-btn" id="themeToggle" onclick="toggleDarkMode()" data-i18n="buttons.darkMode"></button>
+</div>
+
+<div class="screen-shield" id="greyShield">
+    <p style="background: #0f172a; padding: 20px 40px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" data-i18n="shield.protectedLabel"></p>
+    <span style="font-size: 16px; font-weight: normal; margin-top: 10px; color: #0f172a; background: white; padding: 5px 15px; border-radius: 20px; font-weight: 600;" data-i18n="shield.instructionLabel"></span>
+</div>
+
+<div class="container">
+
+    <div class="temporary-todo-float">
+        <div class="todo-title">🚧 TO DO 🚧</div>
+        <ul class="todo-list">
+            <li>Access with unique link/invite</li>
+            <li>Configure Webhooks for Teams</li>
+            <li>Full l18 implementation</li>
+            <li>Repair QA Button</li>
+        </ul>
+    </div>
+
+    <div class="header-meta" id="headerMeta">
+        <h1 class="test-title" id="mainHeadingTitle" data-i18n="global.mainHeading"></h1>
+        <div class="timer-bar" id="timerDisplay">Time Left: 2:00:00</div>
+    </div>
+
+    <form id="assessmentForm" onsubmit="return false;">
+
+        <div class="page-view active" id="page1">
+            <div class="section-title" data-i18n="page1.sectionTitle"></div>
+            <p class="info-text">
+                <span data-i18n="page1.intro"></span>
+                <span class="tip-alert" data-i18n="page1.tipAlert"></span>
+            </p>
+
+            <div class="form-group">
+                <label for="firstName"><span data-i18n="page1.label.firstName"></span><span class="required-star">*</span></label>
+                <input type="text" id="firstName" required placeholder="" data-i18n-placeholder="page1.placeholder.firstName">
+            </div>
+            <div class="form-group">
+                <label for="lastName"><span data-i18n="page1.label.lastName"></span><span class="required-star">*</span></label>
+                <input type="text" id="lastName" required placeholder="" data-i18n-placeholder="page1.placeholder.lastName">
+            </div>
+            <div class="form-group">
+                <label for="candidateEmail"><span data-i18n="page1.label.email"></span><span class="required-star">*</span></label>
+                <input type="email" id="candidateEmail" required placeholder="" data-i18n-placeholder="page1.placeholder.email">
+            </div>
+
+            <div class="form-group" style="position: relative;">
+                <label><span data-i18n="page1.label.targetLanguage"></span><span class="required-star">*</span></label>
+                <!-- Kept 1px (not display:none) so native required-field validation can still focus it -->
+                <input type="text" id="candidateLanguage" value="" required style="position: absolute; bottom: 0; left: 50%; width: 1px; height: 1px; padding: 0; margin: 0; opacity: 0; pointer-events: none;">
+
+                <div class="language-grid" id="langGridContainer"></div>
+            </div>
+
+            <div class="nav-buttons">
+                <div></div>
+                <button type="button" class="btn-start" id="unlockBtn" onclick="startTestTimer(false)" data-i18n="page1.button.start"></button>
+            </div>
+        </div>
+        <div class="page-view" id="page2">
+            <div class="split-layout">
+                <div class="side-window">
+                    <div class="side-title" data-i18n="page2.sidebar.bugTypesTitle"></div>
+                    <div class="side-text" id="bugTypesBody"></div>
+                    <div class="side-title" data-i18n="page2.sidebar.reportTitle"></div>
+                    <div class="side-text" id="reportTemplate"></div>
+                </div>
+
+                <div class="main-content">
+                    <div class="section-title" data-i18n="page2.sectionTitle"></div>
+                    <p class="info-text" data-i18n="page2.intro"></p>
+
+                    <div class="form-group">
+                        <label id="lbl_q1" data-i18n="page2.q1"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/Cat_fu.jpeg')">
+                            <img src="../screenshots/Cat_fu.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q1" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q2" data-i18n="page2.q2"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/LQA_T.jpeg')">
+                            <img src="../screenshots/LQA_T.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q2">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q2" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q3" data-i18n="page2.q3"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/screenshot3.jpg')">
+                            <img src="../screenshots/screenshot3.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q3">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q3" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q4" data-i18n="page2.q4"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/screenshot4.jpg')">
+                            <img src="../screenshots/screenshot4.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q4">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q4" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <div></div>
+                        <button type="button" class="btn-nav" onclick="changePageView(3)" data-i18n="page2.button.next"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lightbox-overlay-curtain" id="globalLightboxPortal" onclick="closeFullscreenLightbox()">
+            <img src="" id="lightboxFullscreenImage" class="lightbox-full-image" alt="" data-i18n-alt="lightbox.altText">
+        </div>
+        <div class="page-view" id="page3">
+            <div class="split-layout">
+                <div class="side-window">
+                    <div class="side-title" id="glossaryTitle" data-i18n="page3.sidebar.glossaryTitle"></div>
+                    <table class="glossary-table">
+                        <thead>
+                            <tr>
+                                <th id="glossarySourceHeader" data-i18n="page3.glossary.sourceColumnHeader"></th>
+                                <th id="glossaryTargetHeader"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="glossaryBodyContainer"></tbody>
+                    </table>
+                </div>
+
+                <div class="main-content">
+                    <div class="section-title" data-i18n="page3.sectionTitle"></div>
+                    <p class="info-text" data-i18n="page3.intro"></p>
+
+                    <div class="form-group">
+                        <label id="lbl_q5" data-i18n="page3.q5"></label>
+                        <div class="comparison-sheet">
+                            <!-- [KIT]/[color:xxxxx] tokens and the deliberate spelling/grammar flaws below
+                                 are intentional test variables: never corrected, never interpreted as real markup. -->
+                            <div class="comparison-case case-left" id="sheet_q5_left"></div>
+                            <div class="comparison-case" id="sheet_q5_right"></div>
+                        </div>
+                        <textarea id="q5" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q6" data-i18n="page3.q6"></label>
+                        <div class="comparison-sheet">
+                            <div class="comparison-case case-left" id="sheet_q6_left"></div>
+                            <div class="comparison-case" id="sheet_q6_right"></div>
+                        </div>
+                        <textarea id="q6" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q7" data-i18n="page3.q7"></label>
+                        <div class="comparison-sheet">
+                            <div class="comparison-case case-left" id="sheet_q7_left"></div>
+                            <div class="comparison-case" id="sheet_q7_right"></div>
+                        </div>
+                        <textarea id="q7" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button type="button" class="btn-nav" onclick="changePageView(2)" data-i18n="page3.button.prev"></button>
+                        <button type="button" class="btn-nav" onclick="changePageView(4)" data-i18n="page3.button.next"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-view" id="page4">
+            <div class="section-title" data-i18n="page4.sectionTitle"></div>
+            <p class="info-text" data-i18n="page4.intro"></p>
+
+            <div class="form-group">
+                <label id="lbl_q8" data-i18n="page4.q8"></label>
+                <div class="textarea-container">
+                    <textarea id="q8" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    <div class="word-counter-badge" id="counter_q8"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label id="lbl_q9">9. Loading…</label>
+                <div class="textarea-container">
+                    <!-- dir=auto as sane default before applyRtlSupport() sets it explicitly for Arabic -->
+                    <textarea id="q9" rows="4" dir="auto" style="line-height: 1.7;" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    <div class="word-counter-badge" id="counter_q9"></div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button type="button" class="btn-nav" onclick="changePageView(3)" data-i18n="page4.button.prev"></button>
+                <button type="button" class="btn-submit" id="submitBtn" onclick="openConfirmationModal()" data-i18n="page4.button.submit"></button>
+            </div>
+        </div>
+    </form>
+
+    <div class="page-view" id="page5">
+        <div class="summary-header">
+            <h2 data-i18n="page5.thankYouTitle"></h2>
+            <p data-i18n="page5.thankYouBody"></p>
+            <div class="summary-meta-box" id="summaryMetaLanguageBox"></div>
+            <div>
+                <button type="button" class="btn-download" onclick="triggerCandidatePdfDownload()" data-i18n="page5.button.downloadPdf"></button>
+            </div>
+        </div>
+
+        <div class="section-title" data-i18n="page5.sectionTitle"></div>
+        <div id="summaryContent"></div>
+
+        <div class="feedback-container" id="feedbackFormBlock">
+            <h3 style="margin-top:0; color:var(--title-color);" data-i18n="page5.feedback.heading"></h3>
+            <p class="info-text" style="margin-bottom:15px;" data-i18n="page5.feedback.intro"></p>
+
+            <div class="feedback-options">
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.timeIssue"> <span data-i18n="page5.feedback.option.timeIssue"></span></label>
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.functionalIssue"> <span data-i18n="page5.feedback.option.functionalIssue"></span></label>
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.unclearInstructions"> <span data-i18n="page5.feedback.option.unclearInstructions"></span></label>
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.other"> <span data-i18n="page5.feedback.option.other"></span></label>
+            </div>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <textarea id="feedbackText" rows="3" placeholder="" data-i18n-placeholder="page5.feedback.textareaPlaceholder"></textarea>
+            </div>
+
+            <button type="button" class="btn-feedback" id="feedbackSubmitBtn" onclick="submitAnonymousFeedbackForm()" data-i18n="page5.feedback.submitButton"></button>
+        </div>
+        <div class="feedback-success-msg" id="feedbackSuccessMessage" data-i18n="page5.feedback.successMessage"></div>
+    </div>
+</div>
+
+    </div>
+
+<div class="modal-overlay" id="confirmationModal">
+    <div class="modal-box">
+        <h3 data-i18n="modal.title"></h3>
+        <p id="modalConfirmationText"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-yes" id="confirmYesBtn" onclick="confirmSubmission(true)" data-i18n="modal.button.yes"></button>
+            <button type="button" class="btn-no" onclick="confirmSubmission(false)" data-i18n="modal.button.no"></button>
+        </div>
+    </div>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>
