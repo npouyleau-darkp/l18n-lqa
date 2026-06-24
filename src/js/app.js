@@ -3,7 +3,7 @@
 // aucune valeur de texte candidat en dur : uniquement les cles utilisees ci-dessous
 // comme références (lookups EN_COMMON et LQA_LANGUAGES ci-dessous).
 // TODO: remplacer par l'URL raw GitHub definitive du fichier l18n/lqa-data.json.
-const LQA_DATA_URL = 'https://raw.githubusercontent.com/<org>/<repo>/main/l18n/lqa-data.json';
+const LQA_DATA_URL = 'https://raw.githubusercontent.com/npouyleau-darkp/l18n-lqa/master/l18n/lqa-data.json';
 
 let EN_COMMON = {};
 let BUG_TYPES = [];
