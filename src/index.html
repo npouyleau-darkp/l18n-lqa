@@ -99,55 +99,76 @@
                     <div class="section-title" data-i18n="page2.sectionTitle"></div>
                     <p class="info-text" data-i18n="page2.intro"></p>
 
-                    <div class="form-group">
-                        <label id="lbl_q1" data-i18n="page2.q1"></label>
+                    <!-- Example block — static, no textarea -->
+                    <div class="form-group" id="example-block-q1-1">
+                        <label id="lbl_q1-1">Here is an example to follow. Remember to check the guide on the left and to read the context carefully.<br>Context: The game is Pawns of Fire vs Dark Claws, you are playing in English. Mode: Multiplayer, offline, Mega Death Fight. You just defeated your opponent with a Puuuurfect.</label>
                         <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/Cat_fu.jpeg')">
-                            <img src="../screenshots/Cat_fu.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1">
+                            <img src="../screenshots/Cat_fu.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1-example">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q1" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="example-solution" id="example-solution-block">LQA – EN – Placeholder – Mega Death Fight – A placeholder is displayed during a Purrfect
+Steps to reproduce:
+1. Launch the game in English.
+2. Play in Multiplayer, offline, Mega Death Mode.
+3. Defeat your opponent with a Purrfect.
+4. Notice the issue.
+Observed Behavior: A placeholder is displayed when you defeat your opponent with a Puuuurfect.
+Expected Behavior: No placeholder should be displayed in-game.</div>
+                    </div>
+
+                    <!-- q1-2 -->
+                    <div class="form-group">
+                        <label id="lbl_q1-2" data-i18n="page2.q1-2"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/Screen2.jpeg')">
+                            <img src="../screenshots/Screen2.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1-2">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q1-2" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                         <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q1" onclick="startEditQuestion('q1')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q1" onclick="finishEditQuestion('q1')" disabled>Finish</button>
+                            <button type="button" class="btn-q-start" id="btn_start_q1-2" onclick="startEditQuestion('q1-2')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q1-2" onclick="finishEditQuestion('q1-2')" disabled>Finish</button>
                         </div>
                     </div>
 
+                    <!-- q1-3 -->
                     <div class="form-group">
-                        <label id="lbl_q2" data-i18n="page2.q2"></label>
-                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/LQA_T.jpeg')">
-                            <img src="../screenshots/LQA_T.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q2">
-                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
-                        </div>
-                        <textarea id="q2" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
-                        <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q2" onclick="startEditQuestion('q2')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q2" onclick="finishEditQuestion('q2')" disabled>Finish</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label id="lbl_q3" data-i18n="page2.q3"></label>
+                        <label id="lbl_q1-3" data-i18n="page2.q1-3"></label>
                         <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/screenshot3.jpg')">
-                            <img src="../screenshots/screenshot3.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q3">
+                            <img src="../screenshots/screenshot3.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1-3">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q3" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <textarea id="q1-3" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                         <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q3" onclick="startEditQuestion('q3')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q3" onclick="finishEditQuestion('q3')" disabled>Finish</button>
+                            <button type="button" class="btn-q-start" id="btn_start_q1-3" onclick="startEditQuestion('q1-3')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q1-3" onclick="finishEditQuestion('q1-3')" disabled>Finish</button>
                         </div>
                     </div>
 
+                    <!-- q1-4 -->
                     <div class="form-group">
-                        <label id="lbl_q4" data-i18n="page2.q4"></label>
-                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/screenshot4.jpg')">
-                            <img src="../screenshots/screenshot4.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q4">
+                        <label id="lbl_q1-4" data-i18n="page2.q1-4"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/screen5.jpg')">
+                            <img src="../screenshots/screen5.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1-4">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q4" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <textarea id="q1-4" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                         <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q4" onclick="startEditQuestion('q4')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q4" onclick="finishEditQuestion('q4')" disabled>Finish</button>
+                            <button type="button" class="btn-q-start" id="btn_start_q1-4" onclick="startEditQuestion('q1-4')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q1-4" onclick="finishEditQuestion('q1-4')" disabled>Finish</button>
+                        </div>
+                    </div>
+
+                    <!-- q1-5 -->
+                    <div class="form-group">
+                        <label id="lbl_q1-5" data-i18n="page2.q1-5"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('../screenshots/Screen6.jpeg')">
+                            <img src="../screenshots/Screen6.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1-5">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q1-5" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q1-5" onclick="startEditQuestion('q1-5')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q1-5" onclick="finishEditQuestion('q1-5')" disabled>Finish</button>
                         </div>
                     </div>
 
@@ -182,44 +203,104 @@
                     <div class="section-title" data-i18n="page3.sectionTitle"></div>
                     <p class="info-text" data-i18n="page3.intro"></p>
 
+                    <!-- q2-1 -->
                     <div class="form-group">
-                        <label id="lbl_q5" data-i18n="page3.q5"></label>
+                        <label id="lbl_q2-1" data-i18n="page3.q2-1"></label>
                         <div class="comparison-sheet">
-                            <!-- [KIT]/[color:xxxxx] tokens and the deliberate spelling/grammar flaws below
-                                 are intentional test variables: never corrected, never interpreted as real markup. -->
-                            <div class="comparison-case case-left" id="sheet_q5_left"></div>
-                            <div class="comparison-case" id="sheet_q5_right"></div>
+                            <!-- [KIT]/[color:xxxxx] tokens and deliberate flaws below are intentional test variables -->
+                            <div class="comparison-case case-left" id="sheet_q2-1_left"></div>
+                            <div class="comparison-case" id="sheet_q2-1_right"></div>
                         </div>
-                        <textarea id="q5" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <textarea id="q2-1" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                         <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q5" onclick="startEditQuestion('q5')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q5" onclick="finishEditQuestion('q5')" disabled>Finish</button>
+                            <button type="button" class="btn-q-start" id="btn_start_q2-1" onclick="startEditQuestion('q2-1')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-1" onclick="finishEditQuestion('q2-1')" disabled>Finish</button>
                         </div>
                     </div>
 
+                    <!-- q2-2 -->
                     <div class="form-group">
-                        <label id="lbl_q6" data-i18n="page3.q6"></label>
+                        <label id="lbl_q2-2" data-i18n="page3.q2-2"></label>
                         <div class="comparison-sheet">
-                            <div class="comparison-case case-left" id="sheet_q6_left"></div>
-                            <div class="comparison-case" id="sheet_q6_right"></div>
+                            <div class="comparison-case case-left" id="sheet_q2-2_left"></div>
+                            <div class="comparison-case" id="sheet_q2-2_right"></div>
                         </div>
-                        <textarea id="q6" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <textarea id="q2-2" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                         <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q6" onclick="startEditQuestion('q6')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q6" onclick="finishEditQuestion('q6')" disabled>Finish</button>
+                            <button type="button" class="btn-q-start" id="btn_start_q2-2" onclick="startEditQuestion('q2-2')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-2" onclick="finishEditQuestion('q2-2')" disabled>Finish</button>
                         </div>
                     </div>
 
+                    <!-- q2-3 -->
                     <div class="form-group">
-                        <label id="lbl_q7" data-i18n="page3.q7"></label>
+                        <label id="lbl_q2-3" data-i18n="page3.q2-3"></label>
                         <div class="comparison-sheet">
-                            <div class="comparison-case case-left" id="sheet_q7_left"></div>
-                            <div class="comparison-case" id="sheet_q7_right"></div>
+                            <div class="comparison-case case-left" id="sheet_q2-3_left"></div>
+                            <div class="comparison-case" id="sheet_q2-3_right"></div>
                         </div>
-                        <textarea id="q7" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <textarea id="q2-3" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                         <div class="q-controls">
-                            <button type="button" class="btn-q-start" id="btn_start_q7" onclick="startEditQuestion('q7')">Start</button>
-                            <button type="button" class="btn-q-finish" id="btn_finish_q7" onclick="finishEditQuestion('q7')" disabled>Finish</button>
+                            <button type="button" class="btn-q-start" id="btn_start_q2-3" onclick="startEditQuestion('q2-3')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-3" onclick="finishEditQuestion('q2-3')" disabled>Finish</button>
+                        </div>
+                    </div>
+
+                    <!-- q2-4 (duplicate segment, placeholder content) -->
+                    <div class="form-group">
+                        <label id="lbl_q2-4" data-i18n="page3.q2-4"></label>
+                        <div class="comparison-sheet">
+                            <div class="comparison-case case-left" id="sheet_q2-4_left"></div>
+                            <div class="comparison-case" id="sheet_q2-4_right"></div>
+                        </div>
+                        <textarea id="q2-4" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q2-4" onclick="startEditQuestion('q2-4')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-4" onclick="finishEditQuestion('q2-4')" disabled>Finish</button>
+                        </div>
+                    </div>
+
+                    <!-- q2-5 (translation — PS5 error) -->
+                    <div class="form-group">
+                        <label id="lbl_q2-5" data-i18n="page3.q2-5"></label>
+                        <div class="source-text-block" data-i18n="page3.q2-5.source"></div>
+                        <textarea id="q2-5" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q2-5" onclick="startEditQuestion('q2-5')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-5" onclick="finishEditQuestion('q2-5')" disabled>Finish</button>
+                        </div>
+                    </div>
+
+                    <!-- q2-6 (translation — Nintendo eShop) -->
+                    <div class="form-group">
+                        <label id="lbl_q2-6" data-i18n="page3.q2-6"></label>
+                        <div class="source-text-block" data-i18n="page3.q2-6.source"></div>
+                        <textarea id="q2-6" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q2-6" onclick="startEditQuestion('q2-6')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-6" onclick="finishEditQuestion('q2-6')" disabled>Finish</button>
+                        </div>
+                    </div>
+
+                    <!-- q2-7 (translation — Xbox) -->
+                    <div class="form-group">
+                        <label id="lbl_q2-7" data-i18n="page3.q2-7"></label>
+                        <div class="source-text-block" data-i18n="page3.q2-7.source"></div>
+                        <textarea id="q2-7" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q2-7" onclick="startEditQuestion('q2-7')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-7" onclick="finishEditQuestion('q2-7')" disabled>Finish</button>
+                        </div>
+                    </div>
+
+                    <!-- q2-8 (translation — basketball with variables) -->
+                    <div class="form-group">
+                        <label id="lbl_q2-8" data-i18n="page3.q2-8"></label>
+                        <div class="source-text-block" data-i18n="page3.q2-8.source"></div>
+                        <textarea id="q2-8" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q2-8" onclick="startEditQuestion('q2-8')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2-8" onclick="finishEditQuestion('q2-8')" disabled>Finish</button>
                         </div>
                     </div>
 
@@ -236,27 +317,27 @@
             <p class="info-text" data-i18n="page4.intro"></p>
 
             <div class="form-group">
-                <label id="lbl_q8" data-i18n="page4.q8"></label>
+                <label id="lbl_q3-1" data-i18n="page4.q3-1"></label>
                 <div class="textarea-container">
-                    <textarea id="q8" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
-                    <div class="word-counter-badge" id="counter_q8"></div>
+                    <textarea id="q3-1" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                    <div class="word-counter-badge" id="counter_q3-1"></div>
                 </div>
                 <div class="q-controls">
-                    <button type="button" class="btn-q-start" id="btn_start_q8" onclick="startEditQuestion('q8')">Start</button>
-                    <button type="button" class="btn-q-finish" id="btn_finish_q8" onclick="finishEditQuestion('q8')" disabled>Finish</button>
+                    <button type="button" class="btn-q-start" id="btn_start_q3-1" onclick="startEditQuestion('q3-1')">Start</button>
+                    <button type="button" class="btn-q-finish" id="btn_finish_q3-1" onclick="finishEditQuestion('q3-1')" disabled>Finish</button>
                 </div>
             </div>
 
             <div class="form-group">
-                <label id="lbl_q9">9. Loading…</label>
+                <label id="lbl_q3-2">3-2. Loading…</label>
                 <div class="textarea-container">
                     <!-- dir=auto as sane default before applyRtlSupport() sets it explicitly for Arabic -->
-                    <textarea id="q9" rows="4" dir="auto" style="line-height: 1.7;" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
-                    <div class="word-counter-badge" id="counter_q9"></div>
+                    <textarea id="q3-2" rows="4" dir="auto" style="line-height: 1.7;" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                    <div class="word-counter-badge" id="counter_q3-2"></div>
                 </div>
                 <div class="q-controls">
-                    <button type="button" class="btn-q-start" id="btn_start_q9" onclick="startEditQuestion('q9')">Start</button>
-                    <button type="button" class="btn-q-finish" id="btn_finish_q9" onclick="finishEditQuestion('q9')" disabled>Finish</button>
+                    <button type="button" class="btn-q-start" id="btn_start_q3-2" onclick="startEditQuestion('q3-2')">Start</button>
+                    <button type="button" class="btn-q-finish" id="btn_finish_q3-2" onclick="finishEditQuestion('q3-2')" disabled>Finish</button>
                 </div>
             </div>
 

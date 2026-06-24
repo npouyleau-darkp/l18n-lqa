@@ -78,7 +78,7 @@ function buildGlossaryColumnCode(langCode) {
 // === Section timer config ===
 const SECTION_DURATIONS = { A: 30 * 60 * 1000, B: 45 * 60 * 1000, C: 45 * 60 * 1000 };
 const PAGE_SECTION = { 2: 'A', 3: 'B', 4: 'C' };
-const SECTION_QUESTIONS = { A: [1, 2, 3, 4], B: [5, 6, 7], C: [8, 9] };
+const SECTION_QUESTIONS = { A: ['1-1','1-2','1-3','1-4','1-5'], B: ['2-1','2-2','2-3','2-4','2-5','2-6','2-7','2-8'], C: ['3-1','3-2'] };
 
 // === State ===
 let sectionTimerInterval = null;
@@ -172,18 +172,49 @@ function handleSectionExpiry(section) {
     }
 
     recordSectionElapsed(section);
-    alert(EN_COMMON['timer.sectionExpiredAlert']
-        ? EN_COMMON['timer.sectionExpiredAlert'].replace('{s}', section)
-        : `Section ${section} time has expired. Moving to the next section.`);
 
-    const nextPage = { A: 3, B: 4, C: 5 }[section];
-    if (nextPage === 5) {
+    if (section === 'C') {
         if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
         lqaBroadcastChannel.close();
         displaySummaryDashboard(true);
     } else {
-        changePageView(nextPage);
+        const nextPage = { A: 3, B: 4 }[section];
+        showTimerExpiredPopup(section, () => changePageView(nextPage));
     }
+}
+
+function showTimerExpiredPopup(section, onContinue) {
+    const existing = document.getElementById('timerExpiredPopup');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'timerExpiredPopup';
+    overlay.className = 'timer-expired-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'timer-expired-box';
+
+    const msg = document.createElement('p');
+    const raw = EN_COMMON['timer.sectionExpiredAlert'] || `Section ${section} time has expired. Your responses have been saved and you will now proceed to the next section.`;
+    msg.textContent = raw.replace('{s}', section);
+    box.appendChild(msg);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-nav';
+    btn.textContent = 'Continue';
+    btn.onclick = () => { overlay.remove(); onContinue(); };
+    box.appendChild(btn);
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    setTimeout(() => {
+        if (document.getElementById('timerExpiredPopup')) {
+            overlay.remove();
+            onContinue();
+        }
+    }, 5000);
 }
 
 function recordSectionElapsed(section) {
@@ -206,11 +237,11 @@ function formatDuration(ms) {
 
 // === Modal / submission ===
 function openConfirmationModal() {
-    // Scoped to section C questions only (q8-q9)
+    // Scoped to section C questions only (q3-1, q3-2)
     const missingQuestions = [];
-    for (let i = 8; i <= 9; i++) {
-        const field = document.getElementById(`q${i}`);
-        if (!field || !field.value.trim()) missingQuestions.push(`Q${i}`);
+    for (const id of SECTION_QUESTIONS.C) {
+        const field = document.getElementById(`q${id}`);
+        if (!field || !field.value.trim()) missingQuestions.push(`Q${id}`);
     }
 
     const textField = document.getElementById('modalConfirmationText');
@@ -227,14 +258,14 @@ function openConfirmationModal() {
 function submitSection(fromPage) {
     const section = PAGE_SECTION[fromPage];
     const questions = SECTION_QUESTIONS[section] || [];
-    const missing = questions.filter(i => {
-        const f = document.getElementById(`q${i}`);
-        return !f || !f.value.trim();
+    const missing = questions.filter(id => {
+        const f = document.getElementById(`q${id}`);
+        return f && !f.value.trim(); // skip example/static blocks (no textarea)
     });
 
     const textField = document.getElementById('modalConfirmationText');
     if (missing.length > 0) {
-        textField.innerHTML = `<span class="modal-warning-highlight">${EN_COMMON['modal.sectionWarningPrefix']}</span>\n\n${EN_COMMON['modal.warningBody']}<span class="modal-warning-highlight">${missing.map(i => 'Q' + i).join(', ')}</span>.\n\n${EN_COMMON['modal.sectionWarningConfirm']}`;
+        textField.innerHTML = `<span class="modal-warning-highlight">${EN_COMMON['modal.sectionWarningPrefix']}</span>\n\n${EN_COMMON['modal.warningBody']}<span class="modal-warning-highlight">${missing.map(id => 'Q' + id).join(', ')}</span>.\n\n${EN_COMMON['modal.sectionWarningConfirm']}`;
     } else {
         textField.innerHTML = EN_COMMON['modal.sectionDefaultText'];
     }
@@ -325,8 +356,9 @@ function finishEditSession(qid) {
 }
 
 function refreshQuestionLockStates() {
-    for (let i = 1; i <= 9; i++) {
-        const qid = `q${i}`;
+    const allIds = [...SECTION_QUESTIONS.A, ...SECTION_QUESTIONS.B, ...SECTION_QUESTIONS.C];
+    for (const id of allIds) {
+        const qid = `q${id}`;
         const state = getQState(qid);
         const startBtn = document.getElementById(`btn_start_${qid}`);
         const finishBtn = document.getElementById(`btn_finish_${qid}`);
@@ -535,22 +567,25 @@ function buildTeamsBodyText(isTriggeredByTimeout, lang) {
         text += `⚠️ **${EN_COMMON['payload.timeoutWarning']}** ⚠️\n\n`;
     }
 
-    for (let i = 1; i <= 9; i++) {
-        const labelNode = document.getElementById(`lbl_q${i}`);
-        let origLabel = 'Question ' + i;
+    const allIds = [...SECTION_QUESTIONS.A, ...SECTION_QUESTIONS.B, ...SECTION_QUESTIONS.C];
+    for (const id of allIds) {
+        if (id === '1-1') continue; // skip example block
+        const qid = `q${id}`;
+        const labelNode = document.getElementById(`lbl_${qid}`);
+        let origLabel = 'Question ' + id;
         if (labelNode) {
             const clone = labelNode.cloneNode(true);
             const embeddedSpan = clone.querySelector('.print-strip');
             origLabel = embeddedSpan ? embeddedSpan.innerText : clone.innerText;
         }
 
-        const field = document.getElementById(`q${i}`);
+        const field = document.getElementById(qid);
         const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
-        const editMs = parseInt(localStorage.getItem(`lqa_edit_time_q${i}`), 10) || 0;
+        const editMs = parseInt(localStorage.getItem(`lqa_edit_time_${qid}`), 10) || 0;
         const editTime = formatDuration(editMs);
 
         text += `**${origLabel}** *(edit: ${editTime})*\n${targetVal || EN_COMMON['payload.noResponseFallback']}\n`;
-        if (i === 8 || i === 9) {
+        if (id === '3-1' || id === '3-2') {
             text += `*(${EN_COMMON['payload.wordCountSuffix'].replace('{n}', getWordCount(targetVal, lang))})*\n`;
         }
         text += '\n';
@@ -583,8 +618,11 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
     const teamsBodyText = buildTeamsBodyText(isTriggeredByTimeout, lang);
 
     const isRtlSummary = /^ar/i.test(lang);
-    for (let i = 1; i <= 9; i++) {
-        const field = document.getElementById(`q${i}`);
+    const allIds = [...SECTION_QUESTIONS.A, ...SECTION_QUESTIONS.B, ...SECTION_QUESTIONS.C];
+    for (const id of allIds) {
+        if (id === '1-1') continue; // skip example block
+        const qid = `q${id}`;
+        const field = document.getElementById(qid);
         const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
 
         const elementBlock = document.createElement('div');
@@ -592,15 +630,14 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
 
         const qLine = document.createElement('div');
         qLine.className = 'summary-q';
-        qLine.textContent = `${EN_COMMON['page5.responseLabelPrefix']}${i}`;
+        qLine.textContent = `${EN_COMMON['page5.responseLabelPrefix']}${id}`;
 
         const aLine = document.createElement('div');
         aLine.className = 'summary-a';
         aLine.textContent = targetVal || EN_COMMON['payload.noResponseFallback'];
 
-        // Section B (q5-7) and q9 contain target-language text: apply matching direction.
-        // RTL for Arabic; "auto" for all others (handles mixed target+English correctly).
-        if ([5, 6, 7, 9].includes(i)) {
+        // Section B answers and q3-2 contain target-language text: apply direction.
+        if (SECTION_QUESTIONS.B.includes(id) || id === '3-2') {
             aLine.setAttribute('dir', isRtlSummary ? 'rtl' : 'auto');
         }
 
@@ -698,20 +735,20 @@ function triggerDynamicLocalContentHydration(langCode) {
         });
     }
 
-    ['q5', 'q6', 'q7'].forEach(qid => {
-        const leftEl = document.getElementById(`sheet_${qid}_left`);
-        const rightEl = document.getElementById(`sheet_${qid}_right`);
-        if (leftEl && dataPack.referenceEN && dataPack.referenceEN[qid]) leftEl.textContent = dataPack.referenceEN[qid];
-        if (rightEl && dataPack.target && dataPack.target[qid]) rightEl.textContent = dataPack.target[qid];
+    ['q2-1', 'q2-2', 'q2-3', 'q2-4'].forEach(sheetId => {
+        const leftEl = document.getElementById(`sheet_${sheetId}_left`);
+        const rightEl = document.getElementById(`sheet_${sheetId}_right`);
+        if (leftEl && dataPack.referenceEN && dataPack.referenceEN[sheetId]) leftEl.textContent = dataPack.referenceEN[sheetId];
+        if (rightEl && dataPack.target && dataPack.target[sheetId]) rightEl.textContent = dataPack.target[sheetId];
     });
 
-    const lbl9 = document.getElementById('lbl_q9');
-    if (lbl9 && dataPack.q9) {
+    const lbl32 = document.getElementById('lbl_q3-2');
+    if (lbl32 && dataPack['q3-2']) {
         const isCharacterDensityLang = /^(zh|ja|ko|th)/i.test(targetCode);
         const suffix = isCharacterDensityLang
-            ? EN_COMMON['page4.q9.cjkSuffix']
-            : (dataPack.volumeLabel || EN_COMMON['page4.q9.cjkSuffix']);
-        lbl9.innerHTML = `9. <span class="print-strip">${dataPack.q9}</span> (${suffix})`;
+            ? EN_COMMON['page4.q3-2.cjkSuffix']
+            : (dataPack.volumeLabel || EN_COMMON['page4.q3-2.cjkSuffix']);
+        lbl32.innerHTML = `3-2. <span class="print-strip">${dataPack['q3-2']}</span> (${suffix})`;
     }
 
     applyRtlSupport(targetCode);
@@ -724,12 +761,12 @@ function triggerDynamicLocalContentHydration(langCode) {
 function applyRtlSupport(langCode) {
     const isRtl = /^ar/i.test(langCode || "");
 
-    ['sheet_q5_right', 'sheet_q6_right', 'sheet_q7_right'].forEach(id => {
+    ['sheet_q2-1_right', 'sheet_q2-2_right', 'sheet_q2-3_right', 'sheet_q2-4_right'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
     });
 
-    ['q5', 'q6', 'q7', 'q9'].forEach(id => {
+    ['q2-1', 'q2-2', 'q2-3', 'q2-4', 'q2-5', 'q2-6', 'q2-7', 'q2-8', 'q3-2'].forEach(id => {
         const field = document.getElementById(id);
         if (field) field.setAttribute('dir', isRtl ? 'rtl' : 'auto');
     });
@@ -883,14 +920,14 @@ document.addEventListener('input', (e) => {
             e.preventDefault();
             targetField.value = EN_COMMON['security.pasteRestrictedMsg'];
             previousTextLengthsStore[currentFieldId] = targetField.value.length;
-            if (currentFieldId === 'q8' || currentFieldId === 'q9') refreshWordCounterMetric(currentFieldId);
+            if (currentFieldId === 'q3-1' || currentFieldId === 'q3-2') refreshWordCounterMetric(currentFieldId);
             return;
         }
 
         previousTextLengthsStore[currentFieldId] = currentStringValue.length;
         if (targetField.tagName === 'TEXTAREA') {
             localStorage.setItem(`lqa_ans_${currentFieldId}`, currentStringValue);
-            if (currentFieldId === 'q8' || currentFieldId === 'q9') refreshWordCounterMetric(currentFieldId);
+            if (currentFieldId === 'q3-1' || currentFieldId === 'q3-2') refreshWordCounterMetric(currentFieldId);
             autoGrowTextarea(targetField);
         }
     }
@@ -956,14 +993,16 @@ window.addEventListener('load', () => {
             if (btn) btn.innerHTML = EN_COMMON['buttons.lightMode'];
         }
 
-        // 3. Restore answers q1-q9 and initialize flood-guard lengths
-        for (let i = 1; i <= 9; i++) {
-            const storedAnswer = localStorage.getItem(`lqa_ans_q${i}`);
-            const field = document.getElementById(`q${i}`);
+        // 3. Restore answers and initialize flood-guard lengths
+        const allRestoreIds = [...SECTION_QUESTIONS.A, ...SECTION_QUESTIONS.B, ...SECTION_QUESTIONS.C];
+        for (const id of allRestoreIds) {
+            const qid = `q${id}`;
+            const storedAnswer = localStorage.getItem(`lqa_ans_${qid}`);
+            const field = document.getElementById(qid);
             if (storedAnswer !== null && field) {
                 field.value = storedAnswer;
-                previousTextLengthsStore[`q${i}`] = storedAnswer.length;
-                if (i === 8 || i === 9) refreshWordCounterMetric(`q${i}`);
+                previousTextLengthsStore[qid] = storedAnswer.length;
+                if (id === '3-1' || id === '3-2') refreshWordCounterMetric(qid);
                 autoGrowTextarea(field);
             }
         }
