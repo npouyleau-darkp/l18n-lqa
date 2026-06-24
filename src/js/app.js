@@ -153,7 +153,7 @@ function startSectionTimer(section) {
         }
         const mins = Math.floor(remaining / 60000);
         const secs = Math.floor((remaining % 60000) / 1000);
-        display.textContent = `Section ${section} — ${mins}:${secs < 10 ? '0' + secs : secs}`;
+        display.textContent = `Section ${section}: ${mins}:${secs < 10 ? '0' + secs : secs}`;
     };
     tick();
     sectionTimerInterval = setInterval(tick, 1000);
@@ -192,15 +192,23 @@ function recordSectionElapsed(section) {
     if (localStorage.getItem(elapsedKey)) return; // already recorded
     const start = parseInt(localStorage.getItem(startKey), 10);
     if (start) {
-        const elapsed = Math.round((Date.now() - start) / 60000);
-        localStorage.setItem(elapsedKey, elapsed);
+        localStorage.setItem(elapsedKey, Date.now() - start); // stored as ms
     }
+}
+
+function formatDuration(ms) {
+    if (!ms || isNaN(ms) || ms < 0) return '?';
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}m ${secs}s`;
 }
 
 // === Modal / submission ===
 function openConfirmationModal() {
+    // Scoped to section C questions only (q8-q9)
     const missingQuestions = [];
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 8; i <= 9; i++) {
         const field = document.getElementById(`q${i}`);
         if (!field || !field.value.trim()) missingQuestions.push(`Q${i}`);
     }
@@ -226,9 +234,9 @@ function submitSection(fromPage) {
 
     const textField = document.getElementById('modalConfirmationText');
     if (missing.length > 0) {
-        textField.innerHTML = `<span class="modal-warning-highlight">${EN_COMMON['modal.warningPrefix']}</span>\n\n${EN_COMMON['modal.warningBody']}<span class="modal-warning-highlight">${missing.map(i => 'Q' + i).join(', ')}</span>.\n\n${EN_COMMON['modal.warningConfirm']}`;
+        textField.innerHTML = `<span class="modal-warning-highlight">${EN_COMMON['modal.sectionWarningPrefix']}</span>\n\n${EN_COMMON['modal.warningBody']}<span class="modal-warning-highlight">${missing.map(i => 'Q' + i).join(', ')}</span>.\n\n${EN_COMMON['modal.sectionWarningConfirm']}`;
     } else {
-        textField.innerHTML = EN_COMMON['modal.defaultText'];
+        textField.innerHTML = EN_COMMON['modal.sectionDefaultText'];
     }
 
     pendingModalAction = { type: 'sectionAdvance', fromPage };
@@ -443,7 +451,7 @@ function clearSubmissionErrorBanner() {
 }
 
 function downloadAnswersLocally(snapshot) {
-    const secLines = `Section A: ${snapshot.secAMin} min | Section B: ${snapshot.secBMin} min | Section C: ${snapshot.secCMin} min`;
+    const secLines = `Section A: ${snapshot.secAMin} | Section B: ${snapshot.secBMin} | Section C: ${snapshot.secCMin}`;
     const blobContent = `Candidate: ${snapshot.last} ${snapshot.first}\nEmail: ${snapshot.email}\nLanguage: ${snapshot.lang}\n${secLines}\n\n${snapshot.teamsBodyText}`;
     const blob = new Blob([blobContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -505,12 +513,12 @@ function postResultsPayload(payload) {
 
 function buildTeamsBodyText(isTriggeredByTimeout, lang) {
     const email = localStorage.getItem('lqa_candidate_email') || '';
-    const secAMin = localStorage.getItem('lqa_section_elapsed_A') || '?';
-    const secBMin = localStorage.getItem('lqa_section_elapsed_B') || '?';
-    const secCMin = localStorage.getItem('lqa_section_elapsed_C') || '?';
+    const secA = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_A'), 10));
+    const secB = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_B'), 10));
+    const secC = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_C'), 10));
 
     let text = `**${EN_COMMON['payload.emailLabel']}** ${email}\n\n`;
-    text += `**Section A:** ${secAMin} min  |  **Section B:** ${secBMin} min  |  **Section C:** ${secCMin} min\n\n`;
+    text += `**Section A:** ${secA}  |  **Section B:** ${secB}  |  **Section C:** ${secC}\n\n`;
 
     if (isTriggeredByTimeout) {
         text += `⚠️ **${EN_COMMON['payload.timeoutWarning']}** ⚠️\n\n`;
@@ -528,9 +536,9 @@ function buildTeamsBodyText(isTriggeredByTimeout, lang) {
         const field = document.getElementById(`q${i}`);
         const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
         const editMs = parseInt(localStorage.getItem(`lqa_edit_time_q${i}`), 10) || 0;
-        const editMin = Math.round(editMs / 60000);
+        const editTime = formatDuration(editMs);
 
-        text += `**${origLabel}** *(edit: ${editMin} min)*\n${targetVal || EN_COMMON['payload.noResponseFallback']}\n`;
+        text += `**${origLabel}** *(edit: ${editTime})*\n${targetVal || EN_COMMON['payload.noResponseFallback']}\n`;
         if (i === 8 || i === 9) {
             text += `*(${EN_COMMON['payload.wordCountSuffix'].replace('{n}', getWordCount(targetVal, lang))})*\n`;
         }
@@ -551,9 +559,9 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
     const last = localStorage.getItem('lqa_candidate_last') || 'User';
     const email = localStorage.getItem('lqa_candidate_email') || 'unknown@session.com';
     const lang = localStorage.getItem('lqa_candidate_lang') || 'Unknown';
-    const secAMin = localStorage.getItem('lqa_section_elapsed_A') || '?';
-    const secBMin = localStorage.getItem('lqa_section_elapsed_B') || '?';
-    const secCMin = localStorage.getItem('lqa_section_elapsed_C') || '?';
+    const secAMin = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_A'), 10));
+    const secBMin = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_B'), 10));
+    const secCMin = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_C'), 10));
 
     document.getElementById('summaryMetaLanguageBox').innerHTML = `${EN_COMMON['page5.languageMetaPrefix']}${lang}`;
     const contentContainer = document.getElementById('summaryContent');
@@ -631,21 +639,7 @@ function simulateRecruiterPayload() {
     const first = localStorage.getItem('lqa_candidate_first') || '';
     const last = localStorage.getItem('lqa_candidate_last') || '';
     const lang = localStorage.getItem('lqa_candidate_lang') || '';
-
-    // Use '(pending)' for sections not yet submitted
-    const originalA = localStorage.getItem('lqa_section_elapsed_A');
-    const originalB = localStorage.getItem('lqa_section_elapsed_B');
-    const originalC = localStorage.getItem('lqa_section_elapsed_C');
-    if (!originalA) localStorage.setItem('lqa_section_elapsed_A', '(pending)');
-    if (!originalB) localStorage.setItem('lqa_section_elapsed_B', '(pending)');
-    if (!originalC) localStorage.setItem('lqa_section_elapsed_C', '(pending)');
-
     const text = buildTeamsBodyText(false, lang);
-
-    if (!originalA) localStorage.removeItem('lqa_section_elapsed_A');
-    if (!originalB) localStorage.removeItem('lqa_section_elapsed_B');
-    if (!originalC) localStorage.removeItem('lqa_section_elapsed_C');
-
     const title = `${last} ${first} - ${EN_COMMON['page5.languageMetaPrefix'] || 'Language: '}${lang}`;
     document.getElementById('payloadPreviewContent').textContent = `TITLE: ${title}\n\nBODY:\n${text}`;
     document.getElementById('payloadPreviewModal').classList.add('show');
@@ -668,6 +662,7 @@ function triggerDynamicLocalContentHydration(langCode) {
 
     const glossaryBody = document.getElementById('glossaryBodyContainer');
     if (glossaryBody && Array.isArray(dataPack.glossary)) {
+        const isRtlLang = /^ar/i.test(targetCode);
         glossaryBody.innerHTML = "";
         dataPack.glossary.forEach(entry => {
             const row = document.createElement('tr');
@@ -676,6 +671,7 @@ function triggerDynamicLocalContentHydration(langCode) {
             enCell.textContent = entry.en;
             const targetCell = document.createElement('td');
             targetCell.textContent = entry.target;
+            if (isRtlLang) targetCell.setAttribute('dir', 'rtl');
             row.appendChild(enCell);
             row.appendChild(targetCell);
             glossaryBody.appendChild(row);
@@ -701,19 +697,16 @@ function triggerDynamicLocalContentHydration(langCode) {
     applyRtlSupport(targetCode);
 }
 
-// Applies right-to-left text direction for Arabic (ar-AA).
+// Applies RTL direction for Arabic (ar-AA): only the target-language cells
+// in the comparison sheets and candidate answer fields. Sidebars and the
+// glossary table layout stay LTR (their content is English or column-ordered
+// left→right regardless of target language).
 function applyRtlSupport(langCode) {
     const isRtl = /^ar/i.test(langCode || "");
-    const dirValue = isRtl ? "rtl" : "ltr";
-
-    const glossaryTable = document.querySelector('.glossary-table');
-    if (glossaryTable) glossaryTable.setAttribute('dir', dirValue);
-
-    document.querySelectorAll('.side-window').forEach(panel => panel.setAttribute('dir', dirValue));
 
     ['sheet_q5_right', 'sheet_q6_right', 'sheet_q7_right'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.setAttribute('dir', dirValue);
+        if (el) el.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
     });
 
     ['q5', 'q6', 'q7', 'q9'].forEach(id => {
