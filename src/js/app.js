@@ -1,8 +1,4 @@
-// Source de donnees candidat externe (generee depuis lqa-textes-i18n.xlsx via
-// build_data.py, voir l18n/lqa-data.json sur GitHub). index.html ne contient plus
-// aucune valeur de texte candidat en dur : uniquement les cles utilisees ci-dessous
-// comme références (lookups EN_COMMON et LQA_LANGUAGES ci-dessous).
-// TODO: remplacer par l'URL raw GitHub definitive du fichier l18n/lqa-data.json.
+// External data source (generated from lqa-textes-i18n.xlsx via build_data.py).
 const LQA_DATA_URL = 'https://raw.githubusercontent.com/npouyleau-darkp/l18n-lqa/master/l18n/lqa-data.json';
 
 let EN_COMMON = {};
@@ -11,8 +7,6 @@ let GLOSSARY_TERMS_EN = [];
 let LANG_GRID_ORDER = [];
 let LQA_LANGUAGES = {};
 
-// Message de secours en dur : seul cas ou le texte ne peut pas venir de la data
-// layer externe, puisque c'est justement son chargement qui a echoue.
 const lqaDataReady = fetch(LQA_DATA_URL)
     .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
     .then(data => {
@@ -27,10 +21,7 @@ const lqaDataReady = fetch(LQA_DATA_URL)
         throw err;
     });
 
-// Converts literal "\n" markers (as typed in a spreadsheet cell) into real
-// line breaks, so multi-line EN_Common strings (e.g. the bug report template)
-// stay editable as a single plain-text cell rather than needing a real
-// newline embedded in the source.
+// Converts literal "\n" markers (spreadsheet cells) into real line breaks.
 function expandLineBreaks(text) {
     return String(text).replace(/\\n/g, "\n");
 }
@@ -80,19 +71,29 @@ function renderLanguageGrid() {
     }).join('');
 }
 
-// Column header is the language code itself — never a translated label.
 function buildGlossaryColumnCode(langCode) {
     return (langCode || '').toUpperCase();
 }
 
-let timerRunningEngine;
+// === Section timer config ===
+const SECTION_DURATIONS = { A: 30 * 60 * 1000, B: 45 * 60 * 1000, C: 45 * 60 * 1000 };
+const PAGE_SECTION = { 2: 'A', 3: 'B', 4: 'C' };
+const SECTION_QUESTIONS = { A: [1, 2, 3, 4], B: [5, 6, 7], C: [8, 9] };
+
+// === State ===
+let sectionTimerInterval = null;
 let isTestActive = false;
 let uniqueTabWindowId = sessionStorage.getItem('lqa_tab_window_id') || Math.random().toString(36).substring(2, 15);
 sessionStorage.setItem('lqa_tab_window_id', uniqueTabWindowId);
 
 let lqaBroadcastChannel = new BroadcastChannel('lqa_session_channel');
 let sessionKeepAliveInterval;
-let testEndTime;
+let pendingModalAction = null;
+let activeEditQuestion = null;
+let stringIdsVisible = false;
+
+// flood-guard: track previous lengths to detect large sudden insertions
+let previousTextLengthsStore = {};
 
 function selectGridLanguage(cardElement) {
     if (!cardElement) return;
@@ -112,12 +113,91 @@ function toggleDarkMode() {
     localStorage.setItem('lqa_theme', mode);
 }
 
+// === Page navigation ===
 function changePageView(targetPageId) {
     document.querySelectorAll('.page-view').forEach(view => view.classList.remove('active'));
     document.getElementById(`page${targetPageId}`).classList.add('active');
     window.scrollTo(0, 0);
+
+    if (targetPageId >= 2 && targetPageId <= 4) {
+        localStorage.setItem('lqa_active_page', targetPageId);
+        const section = PAGE_SECTION[targetPageId];
+        if (section && isTestActive) startSectionTimer(section);
+        refreshQuestionLockStates();
+    }
 }
 
+// === Section timers ===
+function startSectionTimer(section) {
+    if (sectionTimerInterval) clearInterval(sectionTimerInterval);
+
+    const storageKey = `lqa_section_end_${section}`;
+    let endTime = parseInt(localStorage.getItem(storageKey), 10);
+    if (!endTime || isNaN(endTime)) {
+        endTime = Date.now() + SECTION_DURATIONS[section];
+        localStorage.setItem(storageKey, endTime);
+        if (!localStorage.getItem(`lqa_section_start_${section}`)) {
+            localStorage.setItem(`lqa_section_start_${section}`, Date.now());
+        }
+    }
+
+    const display = document.getElementById('timerDisplay');
+    display.style.display = 'block';
+
+    const tick = () => {
+        const remaining = endTime - Date.now();
+        if (remaining <= 0) {
+            clearInterval(sectionTimerInterval);
+            handleSectionExpiry(section);
+            return;
+        }
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        display.textContent = `Section ${section} — ${mins}:${secs < 10 ? '0' + secs : secs}`;
+    };
+    tick();
+    sectionTimerInterval = setInterval(tick, 1000);
+}
+
+function handleSectionExpiry(section) {
+    document.getElementById('confirmationModal').classList.remove('show');
+
+    if (activeEditQuestion) {
+        finishEditSession(activeEditQuestion);
+        setQState(activeEditQuestion, 'done');
+        const ta = document.getElementById(activeEditQuestion);
+        if (ta) ta.disabled = true;
+        activeEditQuestion = null;
+        localStorage.removeItem('lqa_active_edit_q');
+    }
+
+    recordSectionElapsed(section);
+    alert(EN_COMMON['timer.sectionExpiredAlert']
+        ? EN_COMMON['timer.sectionExpiredAlert'].replace('{s}', section)
+        : `Section ${section} time has expired. Moving to the next section.`);
+
+    const nextPage = { A: 3, B: 4, C: 5 }[section];
+    if (nextPage === 5) {
+        if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+        lqaBroadcastChannel.close();
+        displaySummaryDashboard(true);
+    } else {
+        changePageView(nextPage);
+    }
+}
+
+function recordSectionElapsed(section) {
+    const startKey = `lqa_section_start_${section}`;
+    const elapsedKey = `lqa_section_elapsed_${section}`;
+    if (localStorage.getItem(elapsedKey)) return; // already recorded
+    const start = parseInt(localStorage.getItem(startKey), 10);
+    if (start) {
+        const elapsed = Math.round((Date.now() - start) / 60000);
+        localStorage.setItem(elapsedKey, elapsed);
+    }
+}
+
+// === Modal / submission ===
 function openConfirmationModal() {
     const missingQuestions = [];
     for (let i = 1; i <= 9; i++) {
@@ -132,95 +212,153 @@ function openConfirmationModal() {
         textField.innerHTML = EN_COMMON['modal.defaultText'];
     }
 
+    pendingModalAction = 'fullSubmit';
+    document.getElementById('confirmationModal').classList.add('show');
+}
+
+function submitSection(fromPage) {
+    const section = PAGE_SECTION[fromPage];
+    const questions = SECTION_QUESTIONS[section] || [];
+    const missing = questions.filter(i => {
+        const f = document.getElementById(`q${i}`);
+        return !f || !f.value.trim();
+    });
+
+    const textField = document.getElementById('modalConfirmationText');
+    if (missing.length > 0) {
+        textField.innerHTML = `<span class="modal-warning-highlight">${EN_COMMON['modal.warningPrefix']}</span>\n\n${EN_COMMON['modal.warningBody']}<span class="modal-warning-highlight">${missing.map(i => 'Q' + i).join(', ')}</span>.\n\n${EN_COMMON['modal.warningConfirm']}`;
+    } else {
+        textField.innerHTML = EN_COMMON['modal.defaultText'];
+    }
+
+    pendingModalAction = { type: 'sectionAdvance', fromPage };
     document.getElementById('confirmationModal').classList.add('show');
 }
 
 function confirmSubmission(isConfirmed) {
     document.getElementById('confirmationModal').classList.remove('show');
-    if (isConfirmed) {
-        clearInterval(timerRunningEngine);
+    if (!isConfirmed) { pendingModalAction = null; return; }
+
+    if (pendingModalAction === 'fullSubmit') {
+        clearInterval(sectionTimerInterval);
         if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
         lqaBroadcastChannel.close();
+        recordSectionElapsed('C');
+        if (activeEditQuestion) finishEditSession(activeEditQuestion);
         displaySummaryDashboard(false);
-    }
-}
-
-function engageInterTabCommunicationBroadcast() {
-    sessionKeepAliveInterval = setInterval(() => {
-        if (isTestActive) {
-            lqaBroadcastChannel.postMessage({
-                type: 'LQA_HEARTBEAT',
-                tabId: uniqueTabWindowId,
-                email: localStorage.getItem('lqa_candidate_email')
-            });
+    } else if (pendingModalAction && pendingModalAction.type === 'sectionAdvance') {
+        const section = PAGE_SECTION[pendingModalAction.fromPage];
+        recordSectionElapsed(section);
+        if (activeEditQuestion) {
+            finishEditSession(activeEditQuestion);
+            setQState(activeEditQuestion, 'done');
+            const ta = document.getElementById(activeEditQuestion);
+            if (ta) ta.disabled = true;
+            activeEditQuestion = null;
+            localStorage.removeItem('lqa_active_edit_q');
         }
-    }, 1000);
+        changePageView(pendingModalAction.fromPage + 1);
+    }
+    pendingModalAction = null;
 }
 
-lqaBroadcastChannel.onmessage = (event) => {
-    const activeEmail = localStorage.getItem('lqa_candidate_email');
-    if (isTestActive && activeEmail && event.data.email === activeEmail && event.data.tabId !== uniqueTabWindowId) {
-        triggerSecurityHardlockWipe(EN_COMMON['security.duplicateTitle'], EN_COMMON['security.duplicateReason']);
-    }
-};
-
-function triggerSecurityHardlockWipe(titleText, reasonText) {
-    isTestActive = false;
-    clearInterval(timerRunningEngine);
-    if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
-    document.getElementById('mainApplicationWrapper').style.display = 'none';
-    document.getElementById('securityHardlockTitle').innerText = titleText;
-    document.getElementById('securityHardlockReason').innerText = reasonText;
-    document.getElementById('securityHardlockScreen').style.display = 'flex';
+// === Question Start / Edit / Finish ===
+function getQState(qid) {
+    return localStorage.getItem(`lqa_q_state_${qid}`) || 'idle';
 }
 
-function resetQASession() {
-    if (confirm(EN_COMMON['qaReset.confirmPrompt'])) {
-        clearInterval(timerRunningEngine);
-        if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.reload();
+function setQState(qid, state) {
+    localStorage.setItem(`lqa_q_state_${qid}`, state);
+}
+
+function startEditQuestion(qid) {
+    if (activeEditQuestion && activeEditQuestion !== qid) return;
+    const state = getQState(qid);
+    if (state === 'editing') return;
+
+    activeEditQuestion = qid;
+    localStorage.setItem('lqa_active_edit_q', qid);
+    setQState(qid, 'editing');
+    localStorage.setItem(`lqa_edit_session_start_${qid}`, Date.now());
+
+    const ta = document.getElementById(qid);
+    if (ta) {
+        ta.disabled = false;
+        previousTextLengthsStore[qid] = ta.value.length;
+        autoGrowTextarea(ta);
+        ta.focus();
+    }
+
+    refreshQuestionLockStates();
+}
+
+function finishEditQuestion(qid) {
+    if (getQState(qid) !== 'editing') return;
+    finishEditSession(qid);
+    setQState(qid, 'done');
+    activeEditQuestion = null;
+    localStorage.removeItem('lqa_active_edit_q');
+
+    const ta = document.getElementById(qid);
+    if (ta) ta.disabled = true;
+
+    refreshQuestionLockStates();
+}
+
+// Accumulates elapsed edit time for qid without changing its state.
+function finishEditSession(qid) {
+    const sessionStart = parseInt(localStorage.getItem(`lqa_edit_session_start_${qid}`), 10);
+    if (sessionStart) {
+        const elapsed = Date.now() - sessionStart;
+        const prev = parseInt(localStorage.getItem(`lqa_edit_time_${qid}`), 10) || 0;
+        localStorage.setItem(`lqa_edit_time_${qid}`, prev + elapsed);
+        localStorage.removeItem(`lqa_edit_session_start_${qid}`);
     }
 }
 
-// Screen-shield anti-screenshot/anti-blur protections
-const shield = document.getElementById('greyShield');
+function refreshQuestionLockStates() {
+    for (let i = 1; i <= 9; i++) {
+        const qid = `q${i}`;
+        const state = getQState(qid);
+        const startBtn = document.getElementById(`btn_start_${qid}`);
+        const finishBtn = document.getElementById(`btn_finish_${qid}`);
+        const ta = document.getElementById(qid);
+        if (!startBtn || !finishBtn || !ta) continue;
 
-const triggerProtection = () => {
-    if (isTestActive) {
-        shield.classList.add('active');
-        document.body.classList.add('shield-activated');
-    }
-};
-const removeProtection = () => {
-    shield.classList.remove('active');
-    document.body.classList.remove('shield-activated');
-};
+        const otherActive = activeEditQuestion && activeEditQuestion !== qid;
 
-document.addEventListener('mouseleave', triggerProtection);
-document.addEventListener('mouseenter', removeProtection);
-window.addEventListener('blur', triggerProtection);
-window.addEventListener('focus', removeProtection);
-
-document.addEventListener('keyup', (event) => {
-    if (event.key === 'PrintScreen' || event.key === 'Snapshot') {
-        triggerProtection();
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(EN_COMMON['security.screenshotClipboardMsg']);
+        if (state === 'editing') {
+            ta.disabled = false;
+            startBtn.textContent = 'Start';
+            startBtn.disabled = true;
+            finishBtn.disabled = false;
+        } else if (state === 'done') {
+            ta.disabled = true;
+            startBtn.textContent = 'Edit';
+            startBtn.disabled = !!otherActive;
+            finishBtn.disabled = true;
+        } else {
+            ta.disabled = true;
+            startBtn.textContent = 'Start';
+            startBtn.disabled = !!otherActive;
+            finishBtn.disabled = true;
         }
-        alert(EN_COMMON['security.printRestrictedAlert']);
     }
-});
+}
 
+// === Auto-grow textarea ===
+function autoGrowTextarea(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 500) + 'px';
+}
+
+// === Word count ===
 function getWordCount(textValue, langCode) {
     const cleanText = textValue.trim();
     if (cleanText === "") return 0;
     const fallbackLang = langCode || localStorage.getItem('lqa_candidate_lang') || "en-US";
 
-    // Chinese & Japanese: Intl.Segmenter for real word-like segmentation (same approach as Thai
-    // below); the rough "character count / 1.6" approximation is kept only as a fallback for
-    // browsers without Intl.Segmenter support.
+    // Chinese & Japanese: Intl.Segmenter for real word-like segmentation.
     if (/^zh/i.test(fallbackLang)) {
         const strippedText = cleanText.replace(/\[.*?\]/g, "");
         if (typeof Intl.Segmenter === "function") {
@@ -239,10 +377,7 @@ function getWordCount(textValue, langCode) {
         return Math.ceil(strippedText.length / 1.6);
     }
 
-    // Korean intentionally keeps the space-based heuristic rather than Intl.Segmenter: Korean text
-    // is already segmented at the eojeol (word-ish unit) level by whitespace, so splitting on
-    // spaces is already a reasonable proxy. The ×1.2 factor compensates for eojeols often bundling
-    // a stem + grammatical particles, which English would usually count as more than one word.
+    // Korean: space-based heuristic with ×1.2 factor for eojeol bundling.
     if (/^ko/i.test(fallbackLang)) {
         const spaceSplitCount = cleanText.split(/\s+/).length;
         return Math.ceil(spaceSplitCount * 1.2);
@@ -266,6 +401,7 @@ function refreshWordCounterMetric(elementId) {
     }
 }
 
+// === Test start ===
 async function startTestTimer(isRestoring) {
     const first = document.getElementById('firstName').value.trim();
     const last = document.getElementById('lastName').value.trim();
@@ -292,43 +428,9 @@ async function startTestTimer(isRestoring) {
     document.getElementById('lastName').disabled = true;
     document.getElementById('candidateEmail').disabled = true;
 
-    changePageView(2);
-    document.getElementById('timerDisplay').style.display = 'block';
     isTestActive = true;
-
     engageInterTabCommunicationBroadcast();
-
-    const existingEndTimeCheck = localStorage.getItem('lqa_test_end_time');
-    if (existingEndTimeCheck) {
-        testEndTime = parseInt(existingEndTimeCheck, 10);
-    } else {
-        const totalDurationMilliseconds = 2 * 60 * 60 * 1000;
-        testEndTime = Date.now() + totalDurationMilliseconds;
-        localStorage.setItem('lqa_test_end_time', testEndTime);
-        localStorage.setItem('lqa_test_start_anchor', Date.now());
-    }
-
-    if (timerRunningEngine) clearInterval(timerRunningEngine);
-
-    timerRunningEngine = setInterval(() => {
-        const now = Date.now();
-        const timeRemainingMilliseconds = testEndTime - now;
-
-        if (timeRemainingMilliseconds <= 0) {
-            clearInterval(timerRunningEngine);
-            document.getElementById('confirmationModal').classList.remove('show');
-            alert(EN_COMMON['timer.expiredAlert']);
-            displaySummaryDashboard(true);
-            return;
-        }
-
-        const totalSecondsRemaining = Math.floor(timeRemainingMilliseconds / 1000);
-        const hours = Math.floor(totalSecondsRemaining / 3600);
-        const minutes = Math.floor((totalSecondsRemaining % 3600) / 60);
-        const seconds = totalSecondsRemaining % 60;
-
-        document.getElementById('timerDisplay').innerHTML = `${EN_COMMON['timer.label']}${hours}:${minutes < 10 ? '0' + minutes : minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
-    }, 1000);
+    changePageView(2); // triggers startSectionTimer('A')
 }
 
 function triggerCandidatePdfDownload() {
@@ -341,7 +443,8 @@ function clearSubmissionErrorBanner() {
 }
 
 function downloadAnswersLocally(snapshot) {
-    const blobContent = `${EN_COMMON['download.candidateLabel']} ${snapshot.last} ${snapshot.first}\n${EN_COMMON['payload.emailLabel']} ${snapshot.email}\n${EN_COMMON['download.languageLabel']} ${snapshot.lang}\n${EN_COMMON['payload.durationLabel']} ${snapshot.elapsedMinutes} ${EN_COMMON['payload.durationUnit']}\n\n${snapshot.teamsBodyText}`;
+    const secLines = `Section A: ${snapshot.secAMin} min | Section B: ${snapshot.secBMin} min | Section C: ${snapshot.secCMin} min`;
+    const blobContent = `Candidate: ${snapshot.last} ${snapshot.first}\nEmail: ${snapshot.email}\nLanguage: ${snapshot.lang}\n${secLines}\n\n${snapshot.teamsBodyText}`;
     const blob = new Blob([blobContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -358,16 +461,10 @@ function showSubmissionErrorBanner(snapshot, retryFn) {
 
     const banner = document.createElement('div');
     banner.id = 'submissionErrorBanner';
-    banner.style.background = '#fef2f2';
-    banner.style.border = '2px solid #fca5a5';
-    banner.style.borderRadius = '10px';
-    banner.style.padding = '20px';
-    banner.style.marginBottom = '30px';
-    banner.style.color = '#7f1d1d';
+    banner.style.cssText = 'background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:20px;margin-bottom:30px;color:#7f1d1d;';
 
     const message = document.createElement('p');
-    message.style.margin = '0 0 15px 0';
-    message.style.fontWeight = '700';
+    message.style.cssText = 'margin:0 0 15px 0;font-weight:700;';
     message.textContent = EN_COMMON['submission.error.message'];
     banner.appendChild(message);
 
@@ -391,8 +488,7 @@ function showSubmissionErrorBanner(snapshot, retryFn) {
     if (summaryHeader) summaryHeader.insertAdjacentElement('afterend', banner);
 }
 
-// Static client-side token: NOT real security (readable from page source), it only filters out
-// the most casual accidental/automated POSTs. Genuine authentication must happen server-side.
+// Static client-side token: NOT real security (readable from page source), filters only casual POSTs.
 function postResultsPayload(payload) {
     return fetch('https://votre-serveur.com', {
         method: 'POST',
@@ -407,32 +503,22 @@ function postResultsPayload(payload) {
     });
 }
 
-function displaySummaryDashboard(isTriggeredByTimeout) {
-    isTestActive = false;
-    document.getElementById('timerDisplay').style.display = 'none';
-    document.getElementById('assessmentForm').style.display = 'none';
-    clearSubmissionErrorBanner();
+function buildTeamsBodyText(isTriggeredByTimeout, lang) {
+    const email = localStorage.getItem('lqa_candidate_email') || '';
+    const secAMin = localStorage.getItem('lqa_section_elapsed_A') || '?';
+    const secBMin = localStorage.getItem('lqa_section_elapsed_B') || '?';
+    const secCMin = localStorage.getItem('lqa_section_elapsed_C') || '?';
 
-    const first = localStorage.getItem('lqa_candidate_first') || "Candidate";
-    const last = localStorage.getItem('lqa_candidate_last') || "User";
-    const email = localStorage.getItem('lqa_candidate_email') || "unknown@session.com";
-    const lang = localStorage.getItem('lqa_candidate_lang') || "Unknown";
+    let text = `**${EN_COMMON['payload.emailLabel']}** ${email}\n\n`;
+    text += `**Section A:** ${secAMin} min  |  **Section B:** ${secBMin} min  |  **Section C:** ${secCMin} min\n\n`;
 
-    const startAnchor = parseInt(localStorage.getItem('lqa_test_start_anchor') || Date.now(), 10);
-    const elapsedMinutes = Math.round((Date.now() - startAnchor) / 60000);
-
-    document.getElementById('summaryMetaLanguageBox').innerHTML = `${EN_COMMON['page5.languageMetaPrefix']}${lang}`;
-    const contentContainer = document.getElementById('summaryContent');
-    contentContainer.innerHTML = '';
-
-    let teamsBodyText = `**${EN_COMMON['payload.emailLabel']}** ${email}\n\n**${EN_COMMON['payload.durationLabel']}** ${elapsedMinutes} ${EN_COMMON['payload.durationUnit']}\n\n`;
     if (isTriggeredByTimeout) {
-        teamsBodyText += `⚠️ **${EN_COMMON['payload.timeoutWarning']}** ⚠️\n\n`;
+        text += `⚠️ **${EN_COMMON['payload.timeoutWarning']}** ⚠️\n\n`;
     }
 
     for (let i = 1; i <= 9; i++) {
         const labelNode = document.getElementById(`lbl_q${i}`);
-        let origLabel = "Question " + i;
+        let origLabel = 'Question ' + i;
         if (labelNode) {
             const clone = labelNode.cloneNode(true);
             const embeddedSpan = clone.querySelector('.print-strip');
@@ -441,13 +527,47 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
 
         const field = document.getElementById(`q${i}`);
         const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
+        const editMs = parseInt(localStorage.getItem(`lqa_edit_time_q${i}`), 10) || 0;
+        const editMin = Math.round(editMs / 60000);
+
+        text += `**${origLabel}** *(edit: ${editMin} min)*\n${targetVal || EN_COMMON['payload.noResponseFallback']}\n`;
+        if (i === 8 || i === 9) {
+            text += `*(${EN_COMMON['payload.wordCountSuffix'].replace('{n}', getWordCount(targetVal, lang))})*\n`;
+        }
+        text += '\n';
+    }
+
+    return text;
+}
+
+function displaySummaryDashboard(isTriggeredByTimeout) {
+    isTestActive = false;
+    clearInterval(sectionTimerInterval);
+    document.getElementById('timerDisplay').style.display = 'none';
+    document.getElementById('assessmentForm').style.display = 'none';
+    clearSubmissionErrorBanner();
+
+    const first = localStorage.getItem('lqa_candidate_first') || 'Candidate';
+    const last = localStorage.getItem('lqa_candidate_last') || 'User';
+    const email = localStorage.getItem('lqa_candidate_email') || 'unknown@session.com';
+    const lang = localStorage.getItem('lqa_candidate_lang') || 'Unknown';
+    const secAMin = localStorage.getItem('lqa_section_elapsed_A') || '?';
+    const secBMin = localStorage.getItem('lqa_section_elapsed_B') || '?';
+    const secCMin = localStorage.getItem('lqa_section_elapsed_C') || '?';
+
+    document.getElementById('summaryMetaLanguageBox').innerHTML = `${EN_COMMON['page5.languageMetaPrefix']}${lang}`;
+    const contentContainer = document.getElementById('summaryContent');
+    contentContainer.innerHTML = '';
+
+    const teamsBodyText = buildTeamsBodyText(isTriggeredByTimeout, lang);
+
+    for (let i = 1; i <= 9; i++) {
+        const field = document.getElementById(`q${i}`);
+        const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
 
         const elementBlock = document.createElement('div');
         elementBlock.className = 'summary-item';
 
-        // Built with createElement + textContent (not innerHTML) so candidate-supplied answer text
-        // is always treated as plain text and can never be interpreted/executed as HTML (fixes
-        // stored XSS).
         const qLine = document.createElement('div');
         qLine.className = 'summary-q';
         qLine.textContent = `${EN_COMMON['page5.responseLabelPrefix']}${i}`;
@@ -459,15 +579,9 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
         elementBlock.appendChild(qLine);
         elementBlock.appendChild(aLine);
         contentContainer.appendChild(elementBlock);
-
-        teamsBodyText += `**${origLabel}**\n${targetVal}\n`;
-        if (i === 8 || i === 9) {
-            teamsBodyText += `*(${EN_COMMON['payload.wordCountSuffix'].replace('{n}', getWordCount(targetVal, lang))})*\n`;
-        }
-        teamsBodyText += `\n`;
     }
 
-    const answersSnapshot = { first, last, email, lang, elapsedMinutes, teamsBodyText };
+    const answersSnapshot = { first, last, email, lang, secAMin, secBMin, secCMin, teamsBodyText };
     const submissionPayload = {
         title: `${last} ${first} - ${EN_COMMON['page5.languageMetaPrefix']}${lang}`,
         text: teamsBodyText
@@ -489,6 +603,52 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
 
     attemptSubmission();
     changePageView(5);
+}
+
+// === QA: Display string IDs toggle ===
+function toggleStringIds() {
+    stringIdsVisible = !stringIdsVisible;
+    const btn = document.getElementById('stringIdsToggle');
+
+    if (stringIdsVisible) {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            el.textContent = el.getAttribute('data-i18n');
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            el.setAttribute('placeholder', el.getAttribute('data-i18n-placeholder'));
+        });
+        if (btn) btn.style.background = '#dc2626';
+    } else {
+        injectEnCommonTexts();
+        const lang = localStorage.getItem('lqa_candidate_lang');
+        if (lang && LQA_LANGUAGES[lang]) triggerDynamicLocalContentHydration(lang);
+        if (btn) btn.style.background = '#0369a1';
+    }
+}
+
+// === QA: Simulate recruiter payload ===
+function simulateRecruiterPayload() {
+    const first = localStorage.getItem('lqa_candidate_first') || '';
+    const last = localStorage.getItem('lqa_candidate_last') || '';
+    const lang = localStorage.getItem('lqa_candidate_lang') || '';
+
+    // Use '(pending)' for sections not yet submitted
+    const originalA = localStorage.getItem('lqa_section_elapsed_A');
+    const originalB = localStorage.getItem('lqa_section_elapsed_B');
+    const originalC = localStorage.getItem('lqa_section_elapsed_C');
+    if (!originalA) localStorage.setItem('lqa_section_elapsed_A', '(pending)');
+    if (!originalB) localStorage.setItem('lqa_section_elapsed_B', '(pending)');
+    if (!originalC) localStorage.setItem('lqa_section_elapsed_C', '(pending)');
+
+    const text = buildTeamsBodyText(false, lang);
+
+    if (!originalA) localStorage.removeItem('lqa_section_elapsed_A');
+    if (!originalB) localStorage.removeItem('lqa_section_elapsed_B');
+    if (!originalC) localStorage.removeItem('lqa_section_elapsed_C');
+
+    const title = `${last} ${first} - ${EN_COMMON['page5.languageMetaPrefix'] || 'Language: '}${lang}`;
+    document.getElementById('payloadPreviewContent').textContent = `TITLE: ${title}\n\nBODY:\n${text}`;
+    document.getElementById('payloadPreviewModal').classList.add('show');
 }
 
 function triggerDynamicLocalContentHydration(langCode) {
@@ -541,10 +701,7 @@ function triggerDynamicLocalContentHydration(langCode) {
     applyRtlSupport(targetCode);
 }
 
-// Applies right-to-left text direction for Arabic (ar-AA): the glossary panel, both
-// side-windows, the target-language column of the Q5/Q6/Q7 comparison sheets (the
-// English reference column intentionally stays LTR), and the candidate's own
-// free-text answer fields for Q5, Q6, Q7 and Q9. Resets to ltr/auto otherwise.
+// Applies right-to-left text direction for Arabic (ar-AA).
 function applyRtlSupport(langCode) {
     const isRtl = /^ar/i.test(langCode || "");
     const dirValue = isRtl ? "rtl" : "ltr";
@@ -565,19 +722,80 @@ function applyRtlSupport(langCode) {
     });
 }
 
+// === Inter-tab communication ===
+function engageInterTabCommunicationBroadcast() {
+    sessionKeepAliveInterval = setInterval(() => {
+        if (isTestActive) {
+            lqaBroadcastChannel.postMessage({
+                type: 'LQA_HEARTBEAT',
+                tabId: uniqueTabWindowId,
+                email: localStorage.getItem('lqa_candidate_email')
+            });
+        }
+    }, 1000);
+}
+
+lqaBroadcastChannel.onmessage = (event) => {
+    const activeEmail = localStorage.getItem('lqa_candidate_email');
+    if (isTestActive && activeEmail && event.data.email === activeEmail && event.data.tabId !== uniqueTabWindowId) {
+        triggerSecurityHardlockWipe(EN_COMMON['security.duplicateTitle'], EN_COMMON['security.duplicateReason']);
+    }
+};
+
+function triggerSecurityHardlockWipe(titleText, reasonText) {
+    isTestActive = false;
+    clearInterval(sectionTimerInterval);
+    if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+    document.getElementById('mainApplicationWrapper').style.display = 'none';
+    document.getElementById('securityHardlockTitle').innerText = titleText;
+    document.getElementById('securityHardlockReason').innerText = reasonText;
+    document.getElementById('securityHardlockScreen').style.display = 'flex';
+}
+
+function resetQASession() {
+    if (confirm(EN_COMMON['qaReset.confirmPrompt'])) {
+        clearInterval(sectionTimerInterval);
+        if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.reload();
+    }
+}
+
+// === Screen-shield anti-screenshot/anti-blur ===
+const shield = document.getElementById('greyShield');
+
+const triggerProtection = () => {
+    if (isTestActive) {
+        shield.classList.add('active');
+        document.body.classList.add('shield-activated');
+    }
+};
+const removeProtection = () => {
+    shield.classList.remove('active');
+    document.body.classList.remove('shield-activated');
+};
+
+document.addEventListener('mouseleave', triggerProtection);
+document.addEventListener('mouseenter', removeProtection);
+window.addEventListener('blur', triggerProtection);
+window.addEventListener('focus', removeProtection);
+
+document.addEventListener('keyup', (event) => {
+    if (event.key === 'PrintScreen' || event.key === 'Snapshot') {
+        triggerProtection();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(EN_COMMON['security.screenshotClipboardMsg']);
+        }
+        alert(EN_COMMON['security.printRestrictedAlert']);
+    }
+});
+
 // Anti-cheat interceptors, feedback submission, lightbox runtime.
 //
-// SECURITY NOTE: everything in this block — and the single-tab BroadcastChannel
-// check above, and the client-side timer above — runs entirely in the candidate's
-// browser. A candidate with basic DevTools knowledge can disable any of it:
-// override navigator.clipboard, delete these event listeners, edit isTestActive /
-// testEndTime in the console, spoof sessionStorage/BroadcastChannel messages, or
-// open the page source and resubmit a forged payload directly to the webhook
-// endpoint. None of this is real proctoring. If test integrity genuinely matters,
-// the fix has to move server-side: a short-lived signed session token validated
-// server-side on every POST, timestamped answer snapshots logged as the candidate
-// types, server-side enforcement of the time limit, or a dedicated proctoring
-// SDK/service for true lockdown (clipboard, dev tools, tab focus).
+// SECURITY NOTE: everything here runs in the candidate's browser and can be
+// overridden via DevTools. See original comments for full threat model context.
+
 function submitAnonymousFeedbackForm() {
     const selectedOptions = [];
     const checkboxes = document.querySelectorAll('input[name="fb_opt"]:checked');
@@ -616,7 +834,7 @@ function submitAnonymousFeedbackForm() {
     });
 }
 
-// 1. Clipboard restrictions (copy/cut/paste)
+// 1. Clipboard restrictions
 document.addEventListener('copy', (e) => { e.preventDefault(); e.clipboardData.setData('text/plain', EN_COMMON['security.copyRestrictedMsg']); });
 document.addEventListener('cut', (e) => { e.preventDefault(); e.clipboardData.setData('text/plain', EN_COMMON['security.copyRestrictedMsg']); });
 document.addEventListener('paste', (e) => {
@@ -628,9 +846,7 @@ document.addEventListener('paste', (e) => {
     }
 });
 
-// 2. Paste/rapid-input flood guard (blocks paste and large sudden insertions)
-let previousTextLengthsStore = {};
-
+// 2. Paste/rapid-input flood guard
 document.addEventListener('input', (e) => {
     if (!isTestActive) return;
 
@@ -653,11 +869,12 @@ document.addEventListener('input', (e) => {
         if (targetField.tagName === 'TEXTAREA') {
             localStorage.setItem(`lqa_ans_${currentFieldId}`, currentStringValue);
             if (currentFieldId === 'q8' || currentFieldId === 'q9') refreshWordCounterMetric(currentFieldId);
+            autoGrowTextarea(targetField);
         }
     }
 });
 
-// 3. Collapses text selection (prevents multi-select copy workaround)
+// 3. Collapse text selection (prevents multi-select copy workaround)
 document.addEventListener('selectionchange', () => {
     if (!isTestActive) return;
     const activeNode = document.activeElement;
@@ -696,63 +913,87 @@ function closeFullscreenLightbox() {
 
 window.addEventListener('load', () => {
     lqaDataReady.then(() => {
-    // 1. Hardware detection matrix blocking smart devices, tablets, and phones.
-    // Combines three independent signals (User-Agent sniffing, viewport width, touch capability)
-    // instead of relying on UA alone, requiring at least 2 of 3 to agree before blocking access.
-    const uaLooksMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const viewportLooksMobile = window.matchMedia('(max-width: 768px)').matches;
-    const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    const mobileSignalCount = [uaLooksMobile, viewportLooksMobile, touchCapable].filter(Boolean).length;
-    const isMobileDevice = mobileSignalCount >= 2;
-    if (isMobileDevice) {
-        isTestActive = false;
-        document.getElementById('mainApplicationWrapper').style.display = 'none';
-        document.getElementById('securityHardlockTitle').innerText = EN_COMMON['security.mobileTitle'];
-        document.getElementById('securityHardlockReason').innerText = EN_COMMON['security.mobileReason'];
-        document.getElementById('securityHardlockScreen').style.display = 'flex';
-        return;
-    }
-
-    if (localStorage.getItem('lqa_theme') === 'dark') {
-        document.body.classList.add('dark-mode');
-        const btn = document.getElementById('themeToggle');
-        if (btn) btn.innerHTML = EN_COMMON['buttons.lightMode'];
-    }
-
-    // 2. Text Answers State Rehydration Loop (q1 to q9). Refreshes the word-count
-    // badges for the two free-text fields that have one (q8, q9).
-    for (let i = 1; i <= 9; i++) {
-        const storedAnswer = localStorage.getItem(`lqa_ans_q${i}`);
-        const field = document.getElementById(`q${i}`);
-        if (storedAnswer !== null && field) {
-            field.value = storedAnswer;
-            if (i === 8 || i === 9) refreshWordCounterMetric(`q${i}`);
+        // 1. Hardware detection: block mobile/tablet (3-signal majority vote)
+        const uaLooksMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const viewportLooksMobile = window.matchMedia('(max-width: 768px)').matches;
+        const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        const mobileSignalCount = [uaLooksMobile, viewportLooksMobile, touchCapable].filter(Boolean).length;
+        if (mobileSignalCount >= 2) {
+            isTestActive = false;
+            document.getElementById('mainApplicationWrapper').style.display = 'none';
+            document.getElementById('securityHardlockTitle').innerText = EN_COMMON['security.mobileTitle'];
+            document.getElementById('securityHardlockReason').innerText = EN_COMMON['security.mobileReason'];
+            document.getElementById('securityHardlockScreen').style.display = 'flex';
+            return;
         }
-    }
 
-    // 3. Accessibility hardening for the hidden language input: kept out of the
-    // keyboard tab order and invisible to assistive technologies, since the
-    // visible language picker is the language-card grid, not this input.
-    const hiddenLangInput = document.getElementById('candidateLanguage');
-    if (hiddenLangInput) {
-        hiddenLangInput.setAttribute('tabindex', '-1');
-        hiddenLangInput.setAttribute('aria-hidden', 'true');
-    }
+        // 2. Restore theme
+        if (localStorage.getItem('lqa_theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.innerHTML = EN_COMMON['buttons.lightMode'];
+        }
 
-    // 4. Reapply localized content + RTL layout support on reload, based on the
-    // previously stored candidate language (registration fields stay disabled by
-    // CSS/state already set before reload — this just restores the visible text).
-    const storedLangForRtl = localStorage.getItem('lqa_candidate_lang');
-    if (storedLangForRtl && LQA_LANGUAGES[storedLangForRtl]) {
-        triggerDynamicLocalContentHydration(storedLangForRtl);
-    }
+        // 3. Restore answers q1-q9 and initialize flood-guard lengths
+        for (let i = 1; i <= 9; i++) {
+            const storedAnswer = localStorage.getItem(`lqa_ans_q${i}`);
+            const field = document.getElementById(`q${i}`);
+            if (storedAnswer !== null && field) {
+                field.value = storedAnswer;
+                previousTextLengthsStore[`q${i}`] = storedAnswer.length;
+                if (i === 8 || i === 9) refreshWordCounterMetric(`q${i}`);
+                autoGrowTextarea(field);
+            }
+        }
+
+        // 4. Accessibility hardening for the hidden language input
+        const hiddenLangInput = document.getElementById('candidateLanguage');
+        if (hiddenLangInput) {
+            hiddenLangInput.setAttribute('tabindex', '-1');
+            hiddenLangInput.setAttribute('aria-hidden', 'true');
+        }
+
+        // 5. Reapply RTL support based on stored language
+        const storedLangForRtl = localStorage.getItem('lqa_candidate_lang');
+        if (storedLangForRtl && LQA_LANGUAGES[storedLangForRtl]) {
+            triggerDynamicLocalContentHydration(storedLangForRtl);
+        }
+
+        // 6. Restore active page (F5 / reload recovery)
+        const storedPage = parseInt(localStorage.getItem('lqa_active_page'), 10);
+        const storedEmail = localStorage.getItem('lqa_candidate_email');
+        const storedLang = localStorage.getItem('lqa_candidate_lang');
+
+        if (storedPage >= 2 && storedPage <= 4 && storedEmail && storedLang) {
+            const first = localStorage.getItem('lqa_candidate_first') || '';
+            const last = localStorage.getItem('lqa_candidate_last') || '';
+            if (first) document.getElementById('firstName').value = first;
+            if (last) document.getElementById('lastName').value = last;
+            document.getElementById('candidateEmail').value = storedEmail;
+            document.getElementById('firstName').disabled = true;
+            document.getElementById('lastName').disabled = true;
+            document.getElementById('candidateEmail').disabled = true;
+
+            document.querySelectorAll('.language-card').forEach(card => {
+                if (card.getAttribute('data-lang') === storedLang) card.classList.add('active');
+            });
+            document.getElementById('candidateLanguage').value = storedLang;
+
+            // Restore active edit question: reset session start so reload time isn't counted
+            const savedActiveEdit = localStorage.getItem('lqa_active_edit_q');
+            if (savedActiveEdit) {
+                activeEditQuestion = savedActiveEdit;
+                localStorage.setItem(`lqa_edit_session_start_${savedActiveEdit}`, Date.now());
+            }
+
+            isTestActive = true;
+            engageInterTabCommunicationBroadcast();
+            changePageView(storedPage); // starts the section timer for storedPage
+            refreshQuestionLockStates();
+        }
     });
 });
 
-// Initial render: static EN_Common text + the Page 1 language grid. Deferred until
-// the external data layer (lqaDataReady) has resolved; runs immediately afterwards
-// since this script sits at the end of body, after every element it targets has
-// already been parsed.
 lqaDataReady.then(() => {
     injectEnCommonTexts();
     renderLanguageGrid();

@@ -24,6 +24,8 @@
 <div style="position: fixed; bottom: 20px; left: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px;">
     <button type="button" id="qaResetBtn" onclick="resetQASession()" style="background-color: #dc2626; color: white; padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background 0.2s;" onmouseover="this.style.backgroundColor='#b91c1c'" onmouseout="this.style.backgroundColor='#dc2626'" data-i18n="buttons.resetQA"></button>
     <button type="button" class="theme-toggle-btn" id="themeToggle" onclick="toggleDarkMode()" data-i18n="buttons.darkMode"></button>
+    <button type="button" class="theme-toggle-btn" id="stringIdsToggle" onclick="toggleStringIds()" style="background:#0369a1;">🔤 String IDs</button>
+    <button type="button" class="theme-toggle-btn" id="simulatePayloadBtn" onclick="simulateRecruiterPayload()" style="background:#047857;">📋 Simulate Payload</button>
 </div>
 
 <div class="screen-shield" id="greyShield">
@@ -45,7 +47,7 @@
 
     <div class="header-meta" id="headerMeta">
         <h1 class="test-title" id="mainHeadingTitle" data-i18n="global.mainHeading"></h1>
-        <div class="timer-bar" id="timerDisplay">Time Left: 2:00:00</div>
+        <div class="timer-bar" id="timerDisplay"></div>
     </div>
 
     <form id="assessmentForm" onsubmit="return false;">
@@ -83,6 +85,7 @@
                 <button type="button" class="btn-start" id="unlockBtn" onclick="startTestTimer(false)" data-i18n="page1.button.start"></button>
             </div>
         </div>
+
         <div class="page-view" id="page2">
             <div class="split-layout">
                 <div class="side-window">
@@ -102,7 +105,11 @@
                             <img src="../screenshots/Cat_fu.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q1" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q1" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q1" onclick="startEditQuestion('q1')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q1" onclick="finishEditQuestion('q1')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -111,7 +118,11 @@
                             <img src="../screenshots/LQA_T.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q2">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q2" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q2" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q2" onclick="startEditQuestion('q2')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q2" onclick="finishEditQuestion('q2')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -120,7 +131,11 @@
                             <img src="../screenshots/screenshot3.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q3">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q3" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q3" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q3" onclick="startEditQuestion('q3')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q3" onclick="finishEditQuestion('q3')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -129,12 +144,16 @@
                             <img src="../screenshots/screenshot4.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q4">
                             <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
                         </div>
-                        <textarea id="q4" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q4" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q4" onclick="startEditQuestion('q4')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q4" onclick="finishEditQuestion('q4')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="nav-buttons">
                         <div></div>
-                        <button type="button" class="btn-nav" onclick="changePageView(3)" data-i18n="page2.button.next"></button>
+                        <button type="button" class="btn-nav" onclick="submitSection(2)" data-i18n="page2.button.next"></button>
                     </div>
                 </div>
             </div>
@@ -143,6 +162,7 @@
         <div class="lightbox-overlay-curtain" id="globalLightboxPortal" onclick="closeFullscreenLightbox()">
             <img src="" id="lightboxFullscreenImage" class="lightbox-full-image" alt="" data-i18n-alt="lightbox.altText">
         </div>
+
         <div class="page-view" id="page3">
             <div class="split-layout">
                 <div class="side-window">
@@ -170,7 +190,11 @@
                             <div class="comparison-case case-left" id="sheet_q5_left"></div>
                             <div class="comparison-case" id="sheet_q5_right"></div>
                         </div>
-                        <textarea id="q5" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q5" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q5" onclick="startEditQuestion('q5')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q5" onclick="finishEditQuestion('q5')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -179,7 +203,11 @@
                             <div class="comparison-case case-left" id="sheet_q6_left"></div>
                             <div class="comparison-case" id="sheet_q6_right"></div>
                         </div>
-                        <textarea id="q6" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q6" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q6" onclick="startEditQuestion('q6')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q6" onclick="finishEditQuestion('q6')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -188,16 +216,21 @@
                             <div class="comparison-case case-left" id="sheet_q7_left"></div>
                             <div class="comparison-case" id="sheet_q7_right"></div>
                         </div>
-                        <textarea id="q7" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                        <textarea id="q7" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
+                        <div class="q-controls">
+                            <button type="button" class="btn-q-start" id="btn_start_q7" onclick="startEditQuestion('q7')">Start</button>
+                            <button type="button" class="btn-q-finish" id="btn_finish_q7" onclick="finishEditQuestion('q7')" disabled>Finish</button>
+                        </div>
                     </div>
 
                     <div class="nav-buttons">
-                        <button type="button" class="btn-nav" onclick="changePageView(2)" data-i18n="page3.button.prev"></button>
-                        <button type="button" class="btn-nav" onclick="changePageView(4)" data-i18n="page3.button.next"></button>
+                        <div></div>
+                        <button type="button" class="btn-nav" onclick="submitSection(3)" data-i18n="page3.button.next"></button>
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="page-view" id="page4">
             <div class="section-title" data-i18n="page4.sectionTitle"></div>
             <p class="info-text" data-i18n="page4.intro"></p>
@@ -205,21 +238,30 @@
             <div class="form-group">
                 <label id="lbl_q8" data-i18n="page4.q8"></label>
                 <div class="textarea-container">
-                    <textarea id="q8" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    <textarea id="q8" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                     <div class="word-counter-badge" id="counter_q8"></div>
                 </div>
+                <div class="q-controls">
+                    <button type="button" class="btn-q-start" id="btn_start_q8" onclick="startEditQuestion('q8')">Start</button>
+                    <button type="button" class="btn-q-finish" id="btn_finish_q8" onclick="finishEditQuestion('q8')" disabled>Finish</button>
+                </div>
             </div>
+
             <div class="form-group">
                 <label id="lbl_q9">9. Loading…</label>
                 <div class="textarea-container">
                     <!-- dir=auto as sane default before applyRtlSupport() sets it explicitly for Arabic -->
-                    <textarea id="q9" rows="4" dir="auto" style="line-height: 1.7;" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    <textarea id="q9" rows="4" dir="auto" style="line-height: 1.7;" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder" disabled></textarea>
                     <div class="word-counter-badge" id="counter_q9"></div>
+                </div>
+                <div class="q-controls">
+                    <button type="button" class="btn-q-start" id="btn_start_q9" onclick="startEditQuestion('q9')">Start</button>
+                    <button type="button" class="btn-q-finish" id="btn_finish_q9" onclick="finishEditQuestion('q9')" disabled>Finish</button>
                 </div>
             </div>
 
             <div class="nav-buttons">
-                <button type="button" class="btn-nav" onclick="changePageView(3)" data-i18n="page4.button.prev"></button>
+                <div></div>
                 <button type="button" class="btn-submit" id="submitBtn" onclick="openConfirmationModal()" data-i18n="page4.button.submit"></button>
             </div>
         </div>
@@ -271,6 +313,17 @@
         </div>
     </div>
 </div>
+
+<div class="modal-overlay" id="payloadPreviewModal">
+    <div class="modal-box" style="max-width: 700px; text-align: left; max-height: 85vh; overflow-y: auto; width: 90%;">
+        <h3 style="margin-top: 0;">📋 Recruiter Payload Preview</h3>
+        <pre id="payloadPreviewContent" style="background: var(--panel-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; font-size: 12px; max-height: 55vh; overflow-y: auto; color: var(--text-color); font-family: inherit;"></pre>
+        <div style="margin-top: 15px; text-align: center;">
+            <button type="button" class="btn-nav" onclick="document.getElementById('payloadPreviewModal').classList.remove('show')">Close</button>
+        </div>
+    </div>
+</div>
+
 <script src="js/app.js"></script>
 </body>
 </html>
