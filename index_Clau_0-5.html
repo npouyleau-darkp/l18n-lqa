@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    
+    <style>
+        :root {
+            --container-bg: #ffffff;
+            --text-color: #1e293b;
+            --title-color: #0f172a;
+            --border-color: #cbd5e1;
+            --input-bg: #f8fafc;
+            --panel-bg: #f8fafc;
+            --bg-gradient: linear-gradient(135deg, #0284c7 0%, #1e40af 50%, #7c3aed 100%);
+        }
+
+        .dark-mode {
+            --container-bg: #1e293b;
+            --text-color: #cbd5e1;
+            --title-color: #f8fafc;
+            --border-color: #475569;
+            --input-bg: #334155;
+            --panel-bg: #1e293b;
+            --bg-gradient: linear-gradient(135deg, #0c4a6e 0%, #1e3a8a 50%, #4c1d95 100%);
+        }
+
+        body { 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
+            padding: 40px 20px; 
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-color); 
+            margin: 0; 
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        #mainApplicationWrapper { display: block; }
+        
+        .noscript-hardlock {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #0f172a; color: #ef4444; z-index: 999999;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; text-align: center; padding: 20px;
+        }
+
+        /* Shown when a duplicate tab/session is detected for the same candidate */
+        .multitab-hardlock {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #090d16; color: #f43f5e; z-index: 1000000;
+            display: none; flex-direction: column; align-items: center;
+            justify-content: center; text-align: center; padding: 30px; box-sizing: border-box;
+        }
+        .multitab-hardlock h1 { font-size: 32px; font-weight: 800; margin-bottom: 15px; }
+        .multitab-hardlock p { color: #94a3b8; font-size: 16px; max-width: 550px; line-height: 1.6; }
+
+        .container { 
+            max-width: 1100px; margin: auto; background: var(--container-bg); 
+            padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); 
+            position: relative; transition: filter 0.05s linear, background-color 0.3s ease; 
+        }
+        
+        body.shield-activated .container {
+            filter: blur(50px) grayscale(100%) brightness(0.2);
+            pointer-events: none; user-select: none;
+        }
+    </style>
+    <style>
+        .header-meta { 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 2px solid var(--border-color); padding-bottom: 20px; 
+            margin-bottom: 30px; position: sticky; top: 0; background: var(--container-bg); 
+            z-index: 100; transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .test-title { font-size: 24px; font-weight: 700; color: var(--title-color); margin: 0; }
+        .timer-bar { font-size: 20px; color: #b91c1c; font-weight: 700; background: #fef2f2; padding: 10px 20px; border-radius: 8px; border: 2px solid #fca5a5; display: none; }
+        
+        .theme-toggle-btn {
+            background: #475569; color: #ffffff; border: none; padding: 10px 15px;
+            border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background 0.2s ease;
+        }
+        .theme-toggle-btn:hover { background: #64748b; }
+
+        .page-view { display: none; }
+        .page-view.active { display: block; }
+
+        .split-layout { display: flex; gap: 30px; align-items: flex-start; }
+        .side-window {
+            flex: 0 0 300px; background: var(--panel-bg); border: 1px solid var(--border-color); 
+            border-radius: 10px; padding: 20px; box-sizing: border-box; max-height: 85vh; 
+            overflow-y: auto; position: sticky; top: 100px; z-index: 1;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .temporary-todo-float {
+            position: absolute; left: -340px; top: 120px; width: 300px;
+            background: var(--panel-bg); border: 2px dashed #eab308; border-radius: 10px;
+            padding: 22px; box-sizing: border-box; height: auto; z-index: 10;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .todo-title {
+            font-size: 15px; font-weight: 800; color: #eab308; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 15px; border-bottom: 2px dashed #eab308;
+            padding-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .todo-list { font-size: 13.5px; line-height: 1.8; color: var(--text-color); margin: 0; padding-left: 18px; }
+        .todo-list li { margin-bottom: 6px; font-weight: 500; }
+        
+        @media (max-width: 1750px) {
+            .temporary-todo-float { display: none !important; }
+        }
+
+        @media (min-width: 1920px) and (max-width: 2559px) {
+            .container { max-width: 1300px; }
+        }
+        @media (min-width: 2560px) {
+            .container { max-width: 1550px; }
+        }
+        @media (max-width: 1279px) {
+            body { padding: 20px 12px; }
+            .container { padding: 25px; }
+            .side-window { flex: 0 0 240px; padding: 15px; }
+            .comparison-sheet { width: 100%; }
+            .header-meta { flex-wrap: wrap; }
+        }
+        
+        .main-content { flex: 1; position: relative; overflow: hidden; }
+    </style>
+    <style>
+        .textarea-container { position: relative; width: 100%; display: flex; flex-direction: column; }
+        .word-counter-badge {
+            align-self: flex-end; margin-top: 6px; padding: 4px 10px; font-size: 12px;
+            font-weight: 600; color: var(--text-color); opacity: 0.7; border-radius: 4px;
+            border: 1px solid var(--border-color); background: var(--panel-bg);
+            transition: opacity 0.2s ease, border-color 0.3s ease;
+        }
+
+        .side-title { font-size: 16px; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 2px solid #2563eb; padding-bottom: 5px; }
+        .side-text { font-size: 14px; line-height: 1.6; color: var(--text-color); white-space: pre-wrap; margin-bottom: 20px; }
+
+        .glossary-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--container-bg); }
+        .glossary-table th, .glossary-table td { border: 1px solid var(--border-color); padding: 8px; text-align: left; word-break: break-word; }
+        .glossary-table th { background: var(--panel-bg); font-weight: 700; color: var(--title-color); }
+
+        .section-title { color: var(--title-color); border-left: 5px solid #2563eb; padding-left: 12px; margin-bottom: 25px; font-size: 20px; font-weight: 700; }
+        .form-group { margin-bottom: 30px; }
+        
+        label { font-weight: 600; display: block; margin-bottom: 10px; color: var(--text-color); line-height: 1.5; white-space: pre-wrap; }
+        .required-star { color: #dc2626; margin-left: 3px; }
+        
+        textarea, input[type="text"], input[type="email"], select { 
+            width: 100%; padding: 14px; box-sizing: border-box; border: 1px solid var(--border-color); 
+            border-radius: 8px; font-size: 15px; background-color: var(--input-bg); color: var(--title-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        textarea { white-space: pre-wrap; word-wrap: break-word; }
+        input:focus, textarea:focus, select:focus { border-color: #2563eb; outline: none; background-color: var(--container-bg); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
+        input:read-only, select:disabled { background-color: var(--border-color); color: #64748b; cursor: not-allowed; }
+        
+        .comparison-sheet { display: flex; width: 75%; margin: 15px auto; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: var(--panel-bg); }
+        .comparison-case { flex: 1; padding: 15px; font-size: 14px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; color: var(--title-color); }
+        .case-left { border-right: 1px solid var(--border-color); background-color: var(--container-bg); }
+
+        .image-interactive-wrapper {
+            display: inline-block;
+            margin: 15px 0;
+            cursor: zoom-in;
+        }
+        
+        .q-image-thumb {
+            width: 320px;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        
+        .image-interactive-wrapper:hover .q-image-thumb {
+            transform: scale(1.02);
+            border-color: #2563eb;
+        }
+
+        .click-enlarge-indicator {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: color 0.2s ease;
+        }
+
+        .image-interactive-wrapper:hover .click-enlarge-indicator {
+            color: #2563eb;
+        }
+
+        .lightbox-overlay-curtain {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(9, 13, 22, 0.9);
+            z-index: 999999;
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-out;
+        }
+        
+        .lightbox-overlay-curtain.active {
+            display: flex;
+        }
+
+        .lightbox-full-image {
+            max-width: 92%;
+            max-height: 92%;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+    </style>
+    <style>
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 35px;
+        }
+
+        .language-card {
+            background: var(--panel-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+        }
+
+        .language-card:hover {
+            border-color: #3b82f6;
+            background: var(--container-bg);
+            transform: translateY(-2px);
+        }
+
+        .language-card.active {
+            border-color: #2563eb;
+            background: var(--container-bg);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+        }
+
+        .language-flag {
+            font-size: 24px;
+            line-height: 1;
+            display: inline-block;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .language-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+        }
+
+        .language-name {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--title-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .language-region {
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Force emoji font for consistent flag rendering across platforms */
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            .language-flag { font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif; }
+        }
+    </style>
+    <style>
+        .nav-buttons { display: flex; justify-content: space-between; margin-top: 35px; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        button { padding: 14px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.2s ease; }
+        .btn-start { background-color: #2563eb; color: white; }
+        .btn-nav { background-color: #475569; color: white; }
+        .btn-submit { background-color: #10b981; color: white; }
+        .btn-download { background-color: #3b82f6; color: white; margin-top: 20px; }
+        .btn-feedback { background-color: #0ea5e9; color: white; margin-top: 15px; width: 100%; }
+        button:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+        .info-text { color: #64748b; margin-bottom: 25px; font-size: 14px; }
+        .tip-alert { color: #dc2626; font-weight: 700; display: block; margin-top: 15px; font-size: 14px; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 200; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: var(--container-bg); padding: 30px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); color: var(--text-color); }
+        .modal-box h3 { margin-top: 0; color: var(--title-color); font-size: 20px; }
+        .modal-box p { color: #64748b; font-size: 15px; margin-bottom: 25px; line-height: 1.5; text-align: left; white-space: pre-wrap; }
+        .modal-box .modal-buttons { display: flex; justify-content: center; gap: 15px; }
+        
+        .modal-warning-highlight { color: #dc2626 !important; font-weight: 700; }
+        .btn-yes { background-color: #22c55e !important; color: #000000 !important; }
+        .btn-no { background-color: #ef4444 !important; color: #000000 !important; }
+        
+        .screen-shield { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(100, 116, 139, 0.2); z-index: 9999; color: #ffffff; font-size: 24px; font-weight: bold; text-align: center; justify-content: center; align-items: center; flex-direction: column; }
+        
+        .summary-header { background: var(--panel-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 10px; margin-bottom: 40px; }
+        .summary-header h2 { margin: 0 0 12px 0; color: var(--title-color); font-size: 24px; font-weight: 700; }
+        .summary-header p { margin: 0; color: var(--text-color); font-size: 15px; }
+        .summary-meta-box { margin-top: 15px; padding: 12px; background: var(--container-bg); border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--title-color); display: inline-block; }
+        
+        .summary-item { margin-bottom: 35px; padding-bottom: 25px; border-bottom: 2px solid var(--border-color); }
+        .summary-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .summary-q { font-weight: 700; color: var(--title-color); margin-bottom: 12px; font-size: 16px; line-height: 1.5; }
+        .summary-a { background: var(--container-bg); padding: 20px 24px; border-radius: 8px; border: 1px solid var(--border-color); border-left: 5px solid #2563eb; color: var(--title-color); white-space: pre-wrap; font-size: 15px; line-height: 1.6; }
+        
+        .feedback-container { margin-top: 40px; padding: 30px; background: var(--panel-bg); border: 2px dashed var(--border-color); border-radius: 10px; text-align: left; }
+        .feedback-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .feedback-label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-color); cursor: pointer; }
+        .feedback-label input { width: auto; margin: 0; cursor: pointer; }
+        .feedback-success-msg { display: none; color: #16a34a; font-size: 16px; font-weight: 700; text-align: center; padding: 20px; border: 2px solid #bbf7d0; background: #f0fdf4; border-radius: 8px; margin-top: 20px; }
+
+        @media print {
+            body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
+            .container { box-shadow: none !important; padding: 0 !important; background: #ffffff !important; }
+            
+            .print-strip { display: none !important; }
+            button, .theme-toggle-btn, .temporary-todo-float, .feedback-container, .feedback-success-msg, #qaResetBtn { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <noscript>
+        <div class="noscript-hardlock">
+            <h1>JavaScript Required</h1>
+            <p>Security compliance protocols require JavaScript execution to be active to view and complete this assessment.</p>
+        </div>
+    </noscript>
+    <!-- noscript text stays hardcoded by necessity: injectEnCommonTexts() never runs here. -->
+
+    <div class="multitab-hardlock" id="securityHardlockScreen">
+        <h1 id="securityHardlockTitle" data-i18n="security.defaultTitle"></h1>
+        <p id="securityHardlockReason" data-i18n="security.defaultReason"></p>
+    </div>
+
+    <div id="mainApplicationWrapper">
+<div style="position: fixed; bottom: 20px; left: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px;">
+    <button type="button" id="qaResetBtn" onclick="resetQASession()" style="background-color: #dc2626; color: white; padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background 0.2s;" onmouseover="this.style.backgroundColor='#b91c1c'" onmouseout="this.style.backgroundColor='#dc2626'" data-i18n="buttons.resetQA"></button>
+    <button type="button" class="theme-toggle-btn" id="themeToggle" onclick="toggleDarkMode()" data-i18n="buttons.darkMode"></button>
+</div>
+
+<div class="screen-shield" id="greyShield">
+    <p style="background: #0f172a; padding: 20px 40px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" data-i18n="shield.protectedLabel"></p>
+    <span style="font-size: 16px; font-weight: normal; margin-top: 10px; color: #0f172a; background: white; padding: 5px 15px; border-radius: 20px; font-weight: 600;" data-i18n="shield.instructionLabel"></span>
+</div>
+
+<div class="container">
+    
+    <div class="temporary-todo-float">
+        <div class="todo-title">🚧 TO DO 🚧</div>
+        <ul class="todo-list">
+            <li>Access with unique link/invite</li>
+            <li>Configure Webhooks for Teams</li>
+            <li>Full l18 implementation</li>
+            <li>Repair QA Button</li>
+        </ul>
+    </div>
+
+    <div class="header-meta" id="headerMeta">
+        <h1 class="test-title" id="mainHeadingTitle" data-i18n="global.mainHeading"></h1>
+        <div class="timer-bar" id="timerDisplay">Time Left: 2:00:00</div>
+    </div>
+    
+    <form id="assessmentForm" onsubmit="return false;">
+        
+        <div class="page-view active" id="page1">
+            <div class="section-title" data-i18n="page1.sectionTitle"></div>
+            <p class="info-text">
+                <span data-i18n="page1.intro"></span>
+                <span class="tip-alert" data-i18n="page1.tipAlert"></span>
+            </p>
+            
+            <div class="form-group">
+                <label for="firstName"><span data-i18n="page1.label.firstName"></span><span class="required-star">*</span></label>
+                <input type="text" id="firstName" required placeholder="" data-i18n-placeholder="page1.placeholder.firstName">
+            </div>
+            <div class="form-group">
+                <label for="lastName"><span data-i18n="page1.label.lastName"></span><span class="required-star">*</span></label>
+                <input type="text" id="lastName" required placeholder="" data-i18n-placeholder="page1.placeholder.lastName">
+            </div>
+            <div class="form-group">
+                <label for="candidateEmail"><span data-i18n="page1.label.email"></span><span class="required-star">*</span></label>
+                <input type="email" id="candidateEmail" required placeholder="" data-i18n-placeholder="page1.placeholder.email">
+            </div>
+            
+            <div class="form-group" style="position: relative;">
+                <label><span data-i18n="page1.label.targetLanguage"></span><span class="required-star">*</span></label>
+                <!-- Kept 1px (not display:none) so native required-field validation can still focus it -->
+                <input type="text" id="candidateLanguage" value="" required style="position: absolute; bottom: 0; left: 50%; width: 1px; height: 1px; padding: 0; margin: 0; opacity: 0; pointer-events: none;">
+                
+                <div class="language-grid" id="langGridContainer"></div>
+            </div>
+            
+            <div class="nav-buttons">
+                <div></div>
+                <button type="button" class="btn-start" id="unlockBtn" onclick="startTestTimer(false)" data-i18n="page1.button.start"></button>
+            </div>
+        </div>
+        <div class="page-view" id="page2">
+            <div class="split-layout">
+                <div class="side-window">
+                    <div class="side-title" data-i18n="page2.sidebar.bugTypesTitle"></div>
+                    <div class="side-text" id="bugTypesBody"></div>
+                    <div class="side-title" data-i18n="page2.sidebar.reportTitle"></div>
+                    <div class="side-text" id="reportTemplate"></div>
+                </div>
+
+                <div class="main-content">
+                    <div class="section-title" data-i18n="page2.sectionTitle"></div>
+                    <p class="info-text" data-i18n="page2.intro"></p>
+                    
+                    <div class="form-group">
+                        <label id="lbl_q1" data-i18n="page2.q1"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('screenshots/Cat_fu.jpeg')">
+                            <img src="screenshots/Cat_fu.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q1">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q1" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q2" data-i18n="page2.q2"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('screenshots/LQA_T.jpeg')">
+                            <img src="screenshots/LQA_T.jpeg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q2">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q2" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q3" data-i18n="page2.q3"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('screenshots/screenshot3.jpg')">
+                            <img src="screenshots/screenshot3.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q3">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q3" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q4" data-i18n="page2.q4"></label>
+                        <div class="image-interactive-wrapper" onclick="openFullscreenLightbox('screenshots/screenshot4.jpg')">
+                            <img src="screenshots/screenshot4.jpg" alt="" class="q-image-thumb" data-i18n-alt="page2.altText.q4">
+                            <span class="click-enlarge-indicator" data-i18n="common.enlargeHint"></span>
+                        </div>
+                        <textarea id="q4" rows="3" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <div></div>
+                        <button type="button" class="btn-nav" onclick="changePageView(3)" data-i18n="page2.button.next"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lightbox-overlay-curtain" id="globalLightboxPortal" onclick="closeFullscreenLightbox()">
+            <img src="" id="lightboxFullscreenImage" class="lightbox-full-image" alt="" data-i18n-alt="lightbox.altText">
+        </div>
+        <div class="page-view" id="page3">
+            <div class="split-layout">
+                <div class="side-window">
+                    <div class="side-title" id="glossaryTitle" data-i18n="page3.sidebar.glossaryTitle"></div>
+                    <table class="glossary-table">
+                        <thead>
+                            <tr>
+                                <th id="glossarySourceHeader" data-i18n="page3.glossary.sourceColumnHeader"></th>
+                                <th id="glossaryTargetHeader"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="glossaryBodyContainer"></tbody>
+                    </table>
+                </div>
+
+                <div class="main-content">
+                    <div class="section-title" data-i18n="page3.sectionTitle"></div>
+                    <p class="info-text" data-i18n="page3.intro"></p>
+                    
+                    <div class="form-group">
+                        <label id="lbl_q5" data-i18n="page3.q5"></label>
+                        <div class="comparison-sheet">
+                            <!-- [KIT]/[color:xxxxx] tokens and the deliberate spelling/grammar flaws below
+                                 are intentional test variables: never corrected, never interpreted as real markup. -->
+                            <div class="comparison-case case-left" id="sheet_q5_left"></div>
+                            <div class="comparison-case" id="sheet_q5_right"></div>
+                        </div>
+                        <textarea id="q5" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q6" data-i18n="page3.q6"></label>
+                        <div class="comparison-sheet">
+                            <div class="comparison-case case-left" id="sheet_q6_left"></div>
+                            <div class="comparison-case" id="sheet_q6_right"></div>
+                        </div>
+                        <textarea id="q6" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="lbl_q7" data-i18n="page3.q7"></label>
+                        <div class="comparison-sheet">
+                            <div class="comparison-case case-left" id="sheet_q7_left"></div>
+                            <div class="comparison-case" id="sheet_q7_right"></div>
+                        </div>
+                        <textarea id="q7" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button type="button" class="btn-nav" onclick="changePageView(2)" data-i18n="page3.button.prev"></button>
+                        <button type="button" class="btn-nav" onclick="changePageView(4)" data-i18n="page3.button.next"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-view" id="page4">
+            <div class="section-title" data-i18n="page4.sectionTitle"></div>
+            <p class="info-text" data-i18n="page4.intro"></p>
+            
+            <div class="form-group">
+                <label id="lbl_q8" data-i18n="page4.q8"></label>
+                <div class="textarea-container">
+                    <textarea id="q8" rows="4" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    <div class="word-counter-badge" id="counter_q8"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label id="lbl_q9">9. Loading…</label>
+                <div class="textarea-container">
+                    <!-- dir=auto as sane default before applyRtlSupport() sets it explicitly for Arabic -->
+                    <textarea id="q9" rows="4" dir="auto" style="line-height: 1.7;" spellcheck="false" autocomplete="off" placeholder="" data-i18n-placeholder="common.textareaPlaceholder"></textarea>
+                    <div class="word-counter-badge" id="counter_q9"></div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button type="button" class="btn-nav" onclick="changePageView(3)" data-i18n="page4.button.prev"></button>
+                <button type="button" class="btn-submit" id="submitBtn" onclick="openConfirmationModal()" data-i18n="page4.button.submit"></button>
+            </div>
+        </div>
+    </form>
+
+    <div class="page-view" id="page5">
+        <div class="summary-header">
+            <h2 data-i18n="page5.thankYouTitle"></h2>
+            <p data-i18n="page5.thankYouBody"></p>
+            <div class="summary-meta-box" id="summaryMetaLanguageBox"></div>
+            <div>
+                <button type="button" class="btn-download" onclick="triggerCandidatePdfDownload()" data-i18n="page5.button.downloadPdf"></button>
+            </div>
+        </div>
+        
+        <div class="section-title" data-i18n="page5.sectionTitle"></div>
+        <div id="summaryContent"></div>
+
+        <div class="feedback-container" id="feedbackFormBlock">
+            <h3 style="margin-top:0; color:var(--title-color);" data-i18n="page5.feedback.heading"></h3>
+            <p class="info-text" style="margin-bottom:15px;" data-i18n="page5.feedback.intro"></p>
+            
+            <div class="feedback-options">
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.timeIssue"> <span data-i18n="page5.feedback.option.timeIssue"></span></label>
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.functionalIssue"> <span data-i18n="page5.feedback.option.functionalIssue"></span></label>
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.unclearInstructions"> <span data-i18n="page5.feedback.option.unclearInstructions"></span></label>
+                <label class="feedback-label"><input type="checkbox" name="fb_opt" value="page5.feedback.option.other"> <span data-i18n="page5.feedback.option.other"></span></label>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:15px;">
+                <textarea id="feedbackText" rows="3" placeholder="" data-i18n-placeholder="page5.feedback.textareaPlaceholder"></textarea>
+            </div>
+            
+            <button type="button" class="btn-feedback" id="feedbackSubmitBtn" onclick="submitAnonymousFeedbackForm()" data-i18n="page5.feedback.submitButton"></button>
+        </div>
+        <div class="feedback-success-msg" id="feedbackSuccessMessage" data-i18n="page5.feedback.successMessage"></div>
+    </div>
+</div>
+
+    </div>
+
+<div class="modal-overlay" id="confirmationModal">
+    <div class="modal-box">
+        <h3 data-i18n="modal.title"></h3>
+        <p id="modalConfirmationText"></p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-yes" id="confirmYesBtn" onclick="confirmSubmission(true)" data-i18n="modal.button.yes"></button>
+            <button type="button" class="btn-no" onclick="confirmSubmission(false)" data-i18n="modal.button.no"></button>
+        </div>
+    </div>
+</div>
+<script>
+// Source de donnees candidat externe (generee depuis lqa-textes-i18n.xlsx via
+// build_data.py, voir l18n/lqa-data.json sur GitHub). index.html ne contient plus
+// aucune valeur de texte candidat en dur : uniquement les cles utilisees ci-dessous
+// comme références (lookups EN_COMMON et LQA_LANGUAGES ci-dessous).
+// TODO: remplacer par l'URL raw GitHub definitive du fichier l18n/lqa-data.json.
+const LQA_DATA_URL = 'https://raw.githubusercontent.com/<org>/<repo>/main/l18n/lqa-data.json';
+
+let EN_COMMON = {};
+let BUG_TYPES = [];
+let GLOSSARY_TERMS_EN = [];
+let LANG_GRID_ORDER = [];
+let LQA_LANGUAGES = {};
+
+// Message de secours en dur : seul cas ou le texte ne peut pas venir de la data
+// layer externe, puisque c'est justement son chargement qui a echoue.
+const lqaDataReady = fetch(LQA_DATA_URL)
+    .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+    .then(data => {
+        EN_COMMON = data.EN_COMMON;
+        BUG_TYPES = data.BUG_TYPES;
+        GLOSSARY_TERMS_EN = data.GLOSSARY_TERMS_EN;
+        LANG_GRID_ORDER = data.LANG_GRID_ORDER;
+        LQA_LANGUAGES = data.LQA_LANGUAGES;
+    })
+    .catch(err => {
+        document.body.innerHTML = '<div style="padding:60px;text-align:center;font-family:sans-serif;color:#b91c1c;">Unable to load the assessment content. Please reload the page or contact support.</div>';
+        throw err;
+    });
+</script>
+<script>
+
+// Converts literal "\n" markers (as typed in a spreadsheet cell) into real
+// line breaks, so multi-line EN_Common strings (e.g. the bug report template)
+// stay editable as a single plain-text cell rather than needing a real
+// newline embedded in the source.
+function expandLineBreaks(text) {
+    return String(text).replace(/\\n/g, "\n");
+}
+
+function injectEnCommonTexts() {
+    if (EN_COMMON['global.pageTitle']) document.title = EN_COMMON['global.pageTitle'];
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (Object.prototype.hasOwnProperty.call(EN_COMMON, key)) el.textContent = EN_COMMON[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (Object.prototype.hasOwnProperty.call(EN_COMMON, key)) el.setAttribute('placeholder', EN_COMMON[key]);
+    });
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+        const key = el.getAttribute('data-i18n-alt');
+        if (Object.prototype.hasOwnProperty.call(EN_COMMON, key)) el.setAttribute('alt', EN_COMMON[key]);
+    });
+
+    renderBugTypesList();
+    renderReportTemplate();
+}
+
+function renderBugTypesList() {
+    const el = document.getElementById('bugTypesBody');
+    if (!el || !Array.isArray(BUG_TYPES)) return;
+    el.textContent = BUG_TYPES.map(entry => `• ${entry.text}`).join('\n');
+}
+
+function renderReportTemplate() {
+    const el = document.getElementById('reportTemplate');
+    if (!el) return;
+    el.textContent = expandLineBreaks(EN_COMMON['page2.sidebar.reportTemplate'] || '');
+}
+
+function renderLanguageGrid() {
+    const container = document.getElementById('langGridContainer');
+    if (!container) return;
+    container.innerHTML = LANG_GRID_ORDER.map(code => {
+        const d = LQA_LANGUAGES[code];
+        if (!d) return '';
+        return `<div class="language-card" data-lang="${code}" onclick="selectGridLanguage(this)">
+                    <span class="language-flag">${d.flag}</span>
+                    <div class="language-info"><span class="language-name">${d.nativeName}</span><span class="language-region">${d.region}</span></div>
+                </div>`;
+    }).join('');
+}
+
+// Column header is the language code itself — never a translated label.
+function buildGlossaryColumnCode(langCode) {
+    return (langCode || '').toUpperCase();
+}
+
+let timerRunningEngine;
+let isTestActive = false;
+let uniqueTabWindowId = sessionStorage.getItem('lqa_tab_window_id') || Math.random().toString(36).substring(2, 15);
+sessionStorage.setItem('lqa_tab_window_id', uniqueTabWindowId);
+
+let lqaBroadcastChannel = new BroadcastChannel('lqa_session_channel');
+let sessionKeepAliveInterval;
+let testEndTime;
+
+function selectGridLanguage(cardElement) {
+    if (!cardElement) return;
+    document.querySelectorAll('.language-card').forEach(card => card.classList.remove('active'));
+    cardElement.classList.add('active');
+    const chosenLangCode = cardElement.getAttribute('data-lang');
+    const hiddenInput = document.getElementById('candidateLanguage');
+    if (hiddenInput) hiddenInput.value = chosenLangCode;
+}
+
+function toggleDarkMode() {
+    const body = document.body;
+    const btn = document.getElementById('themeToggle');
+    body.classList.toggle('dark-mode');
+    const mode = body.classList.contains('dark-mode') ? 'dark' : 'light';
+    if (btn) btn.innerHTML = mode === 'dark' ? EN_COMMON['buttons.lightMode'] : EN_COMMON['buttons.darkMode'];
+    localStorage.setItem('lqa_theme', mode);
+}
+
+function changePageView(targetPageId) {
+    document.querySelectorAll('.page-view').forEach(view => view.classList.remove('active'));
+    document.getElementById(`page${targetPageId}`).classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+function openConfirmationModal() {
+    const missingQuestions = [];
+    for (let i = 1; i <= 9; i++) {
+        const field = document.getElementById(`q${i}`);
+        if (!field || !field.value.trim()) missingQuestions.push(`Q${i}`);
+    }
+
+    const textField = document.getElementById('modalConfirmationText');
+    if (missingQuestions.length > 0) {
+        textField.innerHTML = `<span class="modal-warning-highlight">${EN_COMMON['modal.warningPrefix']}</span>\n\n${EN_COMMON['modal.warningBody']}<span class="modal-warning-highlight">${missingQuestions.join(', ')}</span>.\n\n${EN_COMMON['modal.warningConfirm']}`;
+    } else {
+        textField.innerHTML = EN_COMMON['modal.defaultText'];
+    }
+
+    document.getElementById('confirmationModal').classList.add('show');
+}
+
+function confirmSubmission(isConfirmed) {
+    document.getElementById('confirmationModal').classList.remove('show');
+    if (isConfirmed) {
+        clearInterval(timerRunningEngine);
+        if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+        lqaBroadcastChannel.close();
+        displaySummaryDashboard(false);
+    }
+}
+
+function engageInterTabCommunicationBroadcast() {
+    sessionKeepAliveInterval = setInterval(() => {
+        if (isTestActive) {
+            lqaBroadcastChannel.postMessage({
+                type: 'LQA_HEARTBEAT',
+                tabId: uniqueTabWindowId,
+                email: localStorage.getItem('lqa_candidate_email')
+            });
+        }
+    }, 1000);
+}
+
+lqaBroadcastChannel.onmessage = (event) => {
+    const activeEmail = localStorage.getItem('lqa_candidate_email');
+    if (isTestActive && activeEmail && event.data.email === activeEmail && event.data.tabId !== uniqueTabWindowId) {
+        triggerSecurityHardlockWipe(EN_COMMON['security.duplicateTitle'], EN_COMMON['security.duplicateReason']);
+    }
+};
+
+function triggerSecurityHardlockWipe(titleText, reasonText) {
+    isTestActive = false;
+    clearInterval(timerRunningEngine);
+    if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+    document.getElementById('mainApplicationWrapper').style.display = 'none';
+    document.getElementById('securityHardlockTitle').innerText = titleText;
+    document.getElementById('securityHardlockReason').innerText = reasonText;
+    document.getElementById('securityHardlockScreen').style.display = 'flex';
+}
+
+function resetQASession() {
+    if (confirm(EN_COMMON['qaReset.confirmPrompt'])) {
+        clearInterval(timerRunningEngine);
+        if (sessionKeepAliveInterval) clearInterval(sessionKeepAliveInterval);
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.reload();
+    }
+}
+
+// Screen-shield anti-screenshot/anti-blur protections
+const shield = document.getElementById('greyShield');
+
+const triggerProtection = () => {
+    if (isTestActive) {
+        shield.classList.add('active');
+        document.body.classList.add('shield-activated');
+    }
+};
+const removeProtection = () => {
+    shield.classList.remove('active');
+    document.body.classList.remove('shield-activated');
+};
+
+document.addEventListener('mouseleave', triggerProtection);
+document.addEventListener('mouseenter', removeProtection);
+window.addEventListener('blur', triggerProtection);
+window.addEventListener('focus', removeProtection);
+
+document.addEventListener('keyup', (event) => {
+    if (event.key === 'PrintScreen' || event.key === 'Snapshot') {
+        triggerProtection();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(EN_COMMON['security.screenshotClipboardMsg']);
+        }
+        alert(EN_COMMON['security.printRestrictedAlert']);
+    }
+});
+
+function getWordCount(textValue, langCode) {
+    const cleanText = textValue.trim();
+    if (cleanText === "") return 0;
+    const fallbackLang = langCode || localStorage.getItem('lqa_candidate_lang') || "en-US";
+
+    // Chinese & Japanese: Intl.Segmenter for real word-like segmentation (same approach as Thai
+    // below); the rough "character count / 1.6" approximation is kept only as a fallback for
+    // browsers without Intl.Segmenter support.
+    if (/^zh/i.test(fallbackLang)) {
+        const strippedText = cleanText.replace(/\[.*?\]/g, "");
+        if (typeof Intl.Segmenter === "function") {
+            const segmenter = new Intl.Segmenter('zh', { granularity: 'word' });
+            return Array.from(segmenter.segment(strippedText)).filter(s => s.isWordLike).length;
+        }
+        return Math.ceil(strippedText.length / 1.6);
+    }
+
+    if (/^ja/i.test(fallbackLang)) {
+        const strippedText = cleanText.replace(/\[.*?\]/g, "");
+        if (typeof Intl.Segmenter === "function") {
+            const segmenter = new Intl.Segmenter('ja', { granularity: 'word' });
+            return Array.from(segmenter.segment(strippedText)).filter(s => s.isWordLike).length;
+        }
+        return Math.ceil(strippedText.length / 1.6);
+    }
+
+    // Korean intentionally keeps the space-based heuristic rather than Intl.Segmenter: Korean text
+    // is already segmented at the eojeol (word-ish unit) level by whitespace, so splitting on
+    // spaces is already a reasonable proxy. The ×1.2 factor compensates for eojeols often bundling
+    // a stem + grammatical particles, which English would usually count as more than one word.
+    if (/^ko/i.test(fallbackLang)) {
+        const spaceSplitCount = cleanText.split(/\s+/).length;
+        return Math.ceil(spaceSplitCount * 1.2);
+    }
+
+    if (/^th/i.test(fallbackLang) && typeof Intl.Segmenter === "function") {
+        const segmenter = new Intl.Segmenter('th', { granularity: 'word' });
+        const segments = segmenter.segment(cleanText);
+        return Array.from(segments).filter(s => s.isWordLike).length;
+    }
+
+    return cleanText.split(/\s+/).length;
+}
+
+function refreshWordCounterMetric(elementId) {
+    const textarea = document.getElementById(elementId);
+    const badge = document.getElementById(`counter_${elementId}`);
+    if (textarea && badge) {
+        const activeLang = localStorage.getItem('lqa_candidate_lang') || "en-US";
+        badge.innerHTML = `${EN_COMMON['common.wordCountBadge']}${getWordCount(textarea.value, activeLang)}`;
+    }
+}
+
+async function startTestTimer(isRestoring) {
+    const first = document.getElementById('firstName').value.trim();
+    const last = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('candidateEmail').value.trim();
+    const lang = document.getElementById('candidateLanguage').value;
+
+    if (!isRestoring) {
+        if (!first || !last || !email || !lang) {
+            alert(EN_COMMON['page1.alert.missingFields']);
+            return;
+        }
+
+        localStorage.setItem('lqa_candidate_first', first);
+        localStorage.setItem('lqa_candidate_last', last);
+        localStorage.setItem('lqa_candidate_email', email);
+        localStorage.setItem('lqa_candidate_lang', lang);
+    }
+
+    if (typeof triggerDynamicLocalContentHydration === "function") {
+        triggerDynamicLocalContentHydration(lang || localStorage.getItem('lqa_candidate_lang'));
+    }
+
+    document.getElementById('firstName').disabled = true;
+    document.getElementById('lastName').disabled = true;
+    document.getElementById('candidateEmail').disabled = true;
+
+    changePageView(2);
+    document.getElementById('timerDisplay').style.display = 'block';
+    isTestActive = true;
+
+    engageInterTabCommunicationBroadcast();
+
+    const existingEndTimeCheck = localStorage.getItem('lqa_test_end_time');
+    if (existingEndTimeCheck) {
+        testEndTime = parseInt(existingEndTimeCheck, 10);
+    } else {
+        const totalDurationMilliseconds = 2 * 60 * 60 * 1000;
+        testEndTime = Date.now() + totalDurationMilliseconds;
+        localStorage.setItem('lqa_test_end_time', testEndTime);
+        localStorage.setItem('lqa_test_start_anchor', Date.now());
+    }
+
+    if (timerRunningEngine) clearInterval(timerRunningEngine);
+
+    timerRunningEngine = setInterval(() => {
+        const now = Date.now();
+        const timeRemainingMilliseconds = testEndTime - now;
+
+        if (timeRemainingMilliseconds <= 0) {
+            clearInterval(timerRunningEngine);
+            document.getElementById('confirmationModal').classList.remove('show');
+            alert(EN_COMMON['timer.expiredAlert']);
+            displaySummaryDashboard(true);
+            return;
+        }
+
+        const totalSecondsRemaining = Math.floor(timeRemainingMilliseconds / 1000);
+        const hours = Math.floor(totalSecondsRemaining / 3600);
+        const minutes = Math.floor((totalSecondsRemaining % 3600) / 60);
+        const seconds = totalSecondsRemaining % 60;
+
+        document.getElementById('timerDisplay').innerHTML = `${EN_COMMON['timer.label']}${hours}:${minutes < 10 ? '0' + minutes : minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+    }, 1000);
+}
+
+function triggerCandidatePdfDownload() {
+    window.print();
+}
+
+function clearSubmissionErrorBanner() {
+    const existing = document.getElementById('submissionErrorBanner');
+    if (existing) existing.remove();
+}
+
+function downloadAnswersLocally(snapshot) {
+    const blobContent = `${EN_COMMON['download.candidateLabel']} ${snapshot.last} ${snapshot.first}\n${EN_COMMON['payload.emailLabel']} ${snapshot.email}\n${EN_COMMON['download.languageLabel']} ${snapshot.lang}\n${EN_COMMON['payload.durationLabel']} ${snapshot.elapsedMinutes} ${EN_COMMON['payload.durationUnit']}\n\n${snapshot.teamsBodyText}`;
+    const blob = new Blob([blobContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `lqa-responses-${(snapshot.last || 'candidate').replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function showSubmissionErrorBanner(snapshot, retryFn) {
+    clearSubmissionErrorBanner();
+
+    const banner = document.createElement('div');
+    banner.id = 'submissionErrorBanner';
+    banner.style.background = '#fef2f2';
+    banner.style.border = '2px solid #fca5a5';
+    banner.style.borderRadius = '10px';
+    banner.style.padding = '20px';
+    banner.style.marginBottom = '30px';
+    banner.style.color = '#7f1d1d';
+
+    const message = document.createElement('p');
+    message.style.margin = '0 0 15px 0';
+    message.style.fontWeight = '700';
+    message.textContent = EN_COMMON['submission.error.message'];
+    banner.appendChild(message);
+
+    const retryBtn = document.createElement('button');
+    retryBtn.type = 'button';
+    retryBtn.textContent = EN_COMMON['submission.error.retryButton'];
+    retryBtn.className = 'btn-nav';
+    retryBtn.style.marginRight = '10px';
+    retryBtn.addEventListener('click', retryFn);
+    banner.appendChild(retryBtn);
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.textContent = EN_COMMON['submission.error.downloadButton'];
+    downloadBtn.className = 'btn-download';
+    downloadBtn.style.marginTop = '0';
+    downloadBtn.addEventListener('click', () => downloadAnswersLocally(snapshot));
+    banner.appendChild(downloadBtn);
+
+    const summaryHeader = document.querySelector('#page5 .summary-header');
+    if (summaryHeader) summaryHeader.insertAdjacentElement('afterend', banner);
+}
+
+// Static client-side token: NOT real security (readable from page source), it only filters out
+// the most casual accidental/automated POSTs. Genuine authentication must happen server-side.
+function postResultsPayload(payload) {
+    return fetch('https://votre-serveur.com', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-LQA-Client-Token': 'lqa-static-client-token-2026'
+        },
+        body: JSON.stringify(payload)
+    }).then(response => {
+        if (!response.ok) throw new Error(`Server responded with HTTP ${response.status}`);
+        return response;
+    });
+}
+
+function displaySummaryDashboard(isTriggeredByTimeout) {
+    isTestActive = false;
+    document.getElementById('timerDisplay').style.display = 'none';
+    document.getElementById('assessmentForm').style.display = 'none';
+    clearSubmissionErrorBanner();
+
+    const first = localStorage.getItem('lqa_candidate_first') || "Candidate";
+    const last = localStorage.getItem('lqa_candidate_last') || "User";
+    const email = localStorage.getItem('lqa_candidate_email') || "unknown@session.com";
+    const lang = localStorage.getItem('lqa_candidate_lang') || "Unknown";
+
+    const startAnchor = parseInt(localStorage.getItem('lqa_test_start_anchor') || Date.now(), 10);
+    const elapsedMinutes = Math.round((Date.now() - startAnchor) / 60000);
+
+    document.getElementById('summaryMetaLanguageBox').innerHTML = `${EN_COMMON['page5.languageMetaPrefix']}${lang}`;
+    const contentContainer = document.getElementById('summaryContent');
+    contentContainer.innerHTML = '';
+
+    let teamsBodyText = `**${EN_COMMON['payload.emailLabel']}** ${email}\n\n**${EN_COMMON['payload.durationLabel']}** ${elapsedMinutes} ${EN_COMMON['payload.durationUnit']}\n\n`;
+    if (isTriggeredByTimeout) {
+        teamsBodyText += `⚠️ **${EN_COMMON['payload.timeoutWarning']}** ⚠️\n\n`;
+    }
+
+    for (let i = 1; i <= 9; i++) {
+        const labelNode = document.getElementById(`lbl_q${i}`);
+        let origLabel = "Question " + i;
+        if (labelNode) {
+            const clone = labelNode.cloneNode(true);
+            const embeddedSpan = clone.querySelector('.print-strip');
+            origLabel = embeddedSpan ? embeddedSpan.innerText : clone.innerText;
+        }
+
+        const field = document.getElementById(`q${i}`);
+        const targetVal = field ? field.value.trim() : EN_COMMON['payload.noResponseFallback'];
+
+        const elementBlock = document.createElement('div');
+        elementBlock.className = 'summary-item';
+
+        // Built with createElement + textContent (not innerHTML) so candidate-supplied answer text
+        // is always treated as plain text and can never be interpreted/executed as HTML (fixes
+        // stored XSS).
+        const qLine = document.createElement('div');
+        qLine.className = 'summary-q';
+        qLine.textContent = `${EN_COMMON['page5.responseLabelPrefix']}${i}`;
+
+        const aLine = document.createElement('div');
+        aLine.className = 'summary-a';
+        aLine.textContent = targetVal || EN_COMMON['payload.noResponseFallback'];
+
+        elementBlock.appendChild(qLine);
+        elementBlock.appendChild(aLine);
+        contentContainer.appendChild(elementBlock);
+
+        teamsBodyText += `**${origLabel}**\n${targetVal}\n`;
+        if (i === 8 || i === 9) {
+            teamsBodyText += `*(${EN_COMMON['payload.wordCountSuffix'].replace('{n}', getWordCount(targetVal, lang))})*\n`;
+        }
+        teamsBodyText += `\n`;
+    }
+
+    const answersSnapshot = { first, last, email, lang, elapsedMinutes, teamsBodyText };
+    const submissionPayload = {
+        title: `${last} ${first} - ${EN_COMMON['page5.languageMetaPrefix']}${lang}`,
+        text: teamsBodyText
+    };
+
+    const attemptSubmission = () => {
+        clearSubmissionErrorBanner();
+        postResultsPayload(submissionPayload)
+            .then(() => {
+                const cachedTheme = localStorage.getItem('lqa_theme');
+                localStorage.clear();
+                if (cachedTheme) localStorage.setItem('lqa_theme', cachedTheme);
+            })
+            .catch(error => {
+                console.error("Results submission failed, candidate data preserved:", error);
+                showSubmissionErrorBanner(answersSnapshot, attemptSubmission);
+            });
+    };
+
+    attemptSubmission();
+    changePageView(5);
+}
+
+function triggerDynamicLocalContentHydration(langCode) {
+    const targetCode = langCode || LANG_GRID_ORDER[0];
+    localStorage.setItem('lqa_candidate_lang', targetCode);
+
+    const dataPack = LQA_LANGUAGES[targetCode];
+    if (!dataPack) return;
+
+    const personalizedTitle = `LQA ${dataPack.demonym} Tester Assessment`;
+    const headingEl = document.getElementById('mainHeadingTitle');
+    if (headingEl) headingEl.textContent = personalizedTitle;
+    document.title = personalizedTitle;
+
+    const targetHeader = document.getElementById('glossaryTargetHeader');
+    if (targetHeader) targetHeader.textContent = buildGlossaryColumnCode(targetCode);
+
+    const glossaryBody = document.getElementById('glossaryBodyContainer');
+    if (glossaryBody && Array.isArray(dataPack.glossary)) {
+        glossaryBody.innerHTML = "";
+        dataPack.glossary.forEach(entry => {
+            const row = document.createElement('tr');
+            row.dataset.entryId = entry.id;
+            const enCell = document.createElement('td');
+            enCell.textContent = entry.en;
+            const targetCell = document.createElement('td');
+            targetCell.textContent = entry.target;
+            row.appendChild(enCell);
+            row.appendChild(targetCell);
+            glossaryBody.appendChild(row);
+        });
+    }
+
+    ['q5', 'q6', 'q7'].forEach(qid => {
+        const leftEl = document.getElementById(`sheet_${qid}_left`);
+        const rightEl = document.getElementById(`sheet_${qid}_right`);
+        if (leftEl && dataPack.referenceEN && dataPack.referenceEN[qid]) leftEl.textContent = dataPack.referenceEN[qid];
+        if (rightEl && dataPack.target && dataPack.target[qid]) rightEl.textContent = dataPack.target[qid];
+    });
+
+    const lbl9 = document.getElementById('lbl_q9');
+    if (lbl9 && dataPack.q9) {
+        const isCharacterDensityLang = /^(zh|ja|ko|th)/i.test(targetCode);
+        const suffix = isCharacterDensityLang
+            ? EN_COMMON['page4.q9.cjkSuffix']
+            : (dataPack.volumeLabel || EN_COMMON['page4.q9.cjkSuffix']);
+        lbl9.innerHTML = `9. <span class="print-strip">${dataPack.q9}</span> (${suffix})`;
+    }
+
+    applyRtlSupport(targetCode);
+}
+
+// Applies right-to-left text direction for Arabic (ar-AA): the glossary panel, both
+// side-windows, the target-language column of the Q5/Q6/Q7 comparison sheets (the
+// English reference column intentionally stays LTR), and the candidate's own
+// free-text answer fields for Q5, Q6, Q7 and Q9. Resets to ltr/auto otherwise.
+function applyRtlSupport(langCode) {
+    const isRtl = /^ar/i.test(langCode || "");
+    const dirValue = isRtl ? "rtl" : "ltr";
+
+    const glossaryTable = document.querySelector('.glossary-table');
+    if (glossaryTable) glossaryTable.setAttribute('dir', dirValue);
+
+    document.querySelectorAll('.side-window').forEach(panel => panel.setAttribute('dir', dirValue));
+
+    ['sheet_q5_right', 'sheet_q6_right', 'sheet_q7_right'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('dir', dirValue);
+    });
+
+    ['q5', 'q6', 'q7', 'q9'].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.setAttribute('dir', isRtl ? 'rtl' : 'auto');
+    });
+}
+
+// Anti-cheat interceptors, feedback submission, lightbox runtime.
+//
+// SECURITY NOTE: everything in this block — and the single-tab BroadcastChannel
+// check above, and the client-side timer above — runs entirely in the candidate's
+// browser. A candidate with basic DevTools knowledge can disable any of it:
+// override navigator.clipboard, delete these event listeners, edit isTestActive /
+// testEndTime in the console, spoof sessionStorage/BroadcastChannel messages, or
+// open the page source and resubmit a forged payload directly to the webhook
+// endpoint. None of this is real proctoring. If test integrity genuinely matters,
+// the fix has to move server-side: a short-lived signed session token validated
+// server-side on every POST, timestamped answer snapshots logged as the candidate
+// types, server-side enforcement of the time limit, or a dedicated proctoring
+// SDK/service for true lockdown (clipboard, dev tools, tab focus).
+function submitAnonymousFeedbackForm() {
+    const selectedOptions = [];
+    const checkboxes = document.querySelectorAll('input[name="fb_opt"]:checked');
+    checkboxes.forEach(cb => selectedOptions.push(EN_COMMON[cb.value] || cb.value));
+
+    const feedbackNotes = document.getElementById('feedbackText').value.trim();
+    if (selectedOptions.length === 0 && !feedbackNotes) {
+        alert(EN_COMMON['page5.feedback.alert.noSelection']);
+        return;
+    }
+
+    const submitBtn = document.getElementById('feedbackSubmitBtn');
+    submitBtn.disabled = true;
+
+    let feedbackBodyString = `**${EN_COMMON['payload.feedback.categoriesLabel']}** ${selectedOptions.length > 0 ? selectedOptions.join(', ') : EN_COMMON['payload.feedback.noneSelected']}\n\n`;
+    feedbackBodyString += `**${EN_COMMON['payload.feedback.commentsLabel']}**\n${feedbackNotes || EN_COMMON['payload.feedback.noComments']}`;
+
+    fetch('https://votre-deuxieme-serveur-teams.com', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-LQA-Client-Token': 'lqa-static-client-token-2026'
+        },
+        body: JSON.stringify({
+            title: EN_COMMON['payload.feedbackTitle'],
+            text: feedbackBodyString
+        })
+    }).then(response => {
+        if (!response.ok) throw new Error(`Server responded with HTTP ${response.status}`);
+        document.getElementById('feedbackFormBlock').style.display = 'none';
+        document.getElementById('feedbackSuccessMessage').style.display = 'block';
+    }).catch(err => {
+        console.error("Anonymized survey tracking routing exception handled gracefully:", err);
+        submitBtn.disabled = false;
+        alert(EN_COMMON['page5.feedback.alert.sendError']);
+    });
+}
+
+// 1. Clipboard restrictions (copy/cut/paste)
+document.addEventListener('copy', (e) => { e.preventDefault(); e.clipboardData.setData('text/plain', EN_COMMON['security.copyRestrictedMsg']); });
+document.addEventListener('cut', (e) => { e.preventDefault(); e.clipboardData.setData('text/plain', EN_COMMON['security.copyRestrictedMsg']); });
+document.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const activeElement = document.activeElement;
+    if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+        const start = activeElement.selectionStart;
+        activeElement.value = activeElement.value.substring(0, start) + EN_COMMON['security.pasteRestrictedMsg'] + activeElement.value.substring(activeElement.selectionEnd);
+    }
+});
+
+// 2. Paste/rapid-input flood guard (blocks paste and large sudden insertions)
+let previousTextLengthsStore = {};
+
+document.addEventListener('input', (e) => {
+    if (!isTestActive) return;
+
+    const targetField = e.target;
+    if (targetField.tagName === 'TEXTAREA' || targetField.tagName === 'INPUT') {
+        const currentFieldId = targetField.id;
+        const currentStringValue = targetField.value;
+        const absolutePreviousLength = previousTextLengthsStore[currentFieldId] || 0;
+        const lengthDelta = currentStringValue.length - absolutePreviousLength;
+
+        if (e.inputType === 'insertFromPaste' || lengthDelta > 4) {
+            e.preventDefault();
+            targetField.value = EN_COMMON['security.pasteRestrictedMsg'];
+            previousTextLengthsStore[currentFieldId] = targetField.value.length;
+            if (currentFieldId === 'q8' || currentFieldId === 'q9') refreshWordCounterMetric(currentFieldId);
+            return;
+        }
+
+        previousTextLengthsStore[currentFieldId] = currentStringValue.length;
+        if (targetField.tagName === 'TEXTAREA') {
+            localStorage.setItem(`lqa_ans_${currentFieldId}`, currentStringValue);
+            if (currentFieldId === 'q8' || currentFieldId === 'q9') refreshWordCounterMetric(currentFieldId);
+        }
+    }
+});
+
+// 3. Collapses text selection (prevents multi-select copy workaround)
+document.addEventListener('selectionchange', () => {
+    if (!isTestActive) return;
+    const activeNode = document.activeElement;
+    if (activeNode && (activeNode.tagName === 'TEXTAREA' || activeNode.tagName === 'INPUT')) {
+        if (activeNode.selectionStart !== activeNode.selectionEnd) {
+            activeNode.selectionEnd = activeNode.selectionStart;
+        }
+    }
+});
+
+// 4. Blocks right-click, middle-click, F12 and common DevTools/print/save shortcuts
+document.addEventListener('contextmenu', (event) => event.preventDefault());
+document.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
+document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(key)) || (e.ctrlKey && ['u', 'p', 's'].includes(key))) e.preventDefault();
+});
+
+function openFullscreenLightbox(imageSourcePath) {
+    const portal = document.getElementById('globalLightboxPortal');
+    const imgTarget = document.getElementById('lightboxFullscreenImage');
+    if (portal && imgTarget) {
+        imgTarget.src = imageSourcePath;
+        portal.classList.add('active');
+    }
+}
+
+function closeFullscreenLightbox() {
+    const portal = document.getElementById('globalLightboxPortal');
+    const imgTarget = document.getElementById('lightboxFullscreenImage');
+    if (portal) {
+        portal.classList.remove('active');
+        if (imgTarget) imgTarget.src = "";
+    }
+}
+
+window.addEventListener('load', () => {
+    lqaDataReady.then(() => {
+    // 1. Hardware detection matrix blocking smart devices, tablets, and phones.
+    // Combines three independent signals (User-Agent sniffing, viewport width, touch capability)
+    // instead of relying on UA alone, requiring at least 2 of 3 to agree before blocking access.
+    const uaLooksMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const viewportLooksMobile = window.matchMedia('(max-width: 768px)').matches;
+    const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const mobileSignalCount = [uaLooksMobile, viewportLooksMobile, touchCapable].filter(Boolean).length;
+    const isMobileDevice = mobileSignalCount >= 2;
+    if (isMobileDevice) {
+        isTestActive = false;
+        document.getElementById('mainApplicationWrapper').style.display = 'none';
+        document.getElementById('securityHardlockTitle').innerText = EN_COMMON['security.mobileTitle'];
+        document.getElementById('securityHardlockReason').innerText = EN_COMMON['security.mobileReason'];
+        document.getElementById('securityHardlockScreen').style.display = 'flex';
+        return;
+    }
+
+    if (localStorage.getItem('lqa_theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        const btn = document.getElementById('themeToggle');
+        if (btn) btn.innerHTML = EN_COMMON['buttons.lightMode'];
+    }
+
+    // 2. Text Answers State Rehydration Loop (q1 to q9). Refreshes the word-count
+    // badges for the two free-text fields that have one (q8, q9).
+    for (let i = 1; i <= 9; i++) {
+        const storedAnswer = localStorage.getItem(`lqa_ans_q${i}`);
+        const field = document.getElementById(`q${i}`);
+        if (storedAnswer !== null && field) {
+            field.value = storedAnswer;
+            if (i === 8 || i === 9) refreshWordCounterMetric(`q${i}`);
+        }
+    }
+
+    // 3. Accessibility hardening for the hidden language input: kept out of the
+    // keyboard tab order and invisible to assistive technologies, since the
+    // visible language picker is the language-card grid, not this input.
+    const hiddenLangInput = document.getElementById('candidateLanguage');
+    if (hiddenLangInput) {
+        hiddenLangInput.setAttribute('tabindex', '-1');
+        hiddenLangInput.setAttribute('aria-hidden', 'true');
+    }
+
+    // 4. Reapply localized content + RTL layout support on reload, based on the
+    // previously stored candidate language (registration fields stay disabled by
+    // CSS/state already set before reload — this just restores the visible text).
+    const storedLangForRtl = localStorage.getItem('lqa_candidate_lang');
+    if (storedLangForRtl && LQA_LANGUAGES[storedLangForRtl]) {
+        triggerDynamicLocalContentHydration(storedLangForRtl);
+    }
+    });
+});
+
+// Initial render: static EN_Common text + the Page 1 language grid. Deferred until
+// the external data layer (lqaDataReady) has resolved; runs immediately afterwards
+// since this script sits at the end of body, after every element it targets has
+// already been parsed.
+lqaDataReady.then(() => {
+    injectEnCommonTexts();
+    renderLanguageGrid();
+});
+</script>
+</body>
+</html>

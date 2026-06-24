@@ -1,0 +1,7 @@
+.claude/
+build_data.exe
+build/
+dist/
+__pycache__/
+*.pyc
+~$*
