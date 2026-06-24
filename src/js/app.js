@@ -409,6 +409,14 @@ function refreshWordCounterMetric(elementId) {
     }
 }
 
+// === Session token ===
+async function generateSessionToken(email, lang) {
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const raw = `${email.toLowerCase()}|${lang}|${date}`;
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+}
+
 // === Test start ===
 async function startTestTimer(isRestoring) {
     const first = document.getElementById('firstName').value.trim();
@@ -426,6 +434,8 @@ async function startTestTimer(isRestoring) {
         localStorage.setItem('lqa_candidate_last', last);
         localStorage.setItem('lqa_candidate_email', email);
         localStorage.setItem('lqa_candidate_lang', lang);
+        const token = await generateSessionToken(email, lang);
+        localStorage.setItem('lqa_session_token', token);
     }
 
     if (typeof triggerDynamicLocalContentHydration === "function") {
@@ -517,7 +527,8 @@ function buildTeamsBodyText(isTriggeredByTimeout, lang) {
     const secB = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_B'), 10));
     const secC = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_C'), 10));
 
-    let text = `**${EN_COMMON['payload.emailLabel']}** ${email}\n\n`;
+    const token = localStorage.getItem('lqa_session_token') || '—';
+    let text = `**${EN_COMMON['payload.emailLabel']}** ${email}  |  **Token:** \`${token}\`\n\n`;
     text += `**Section A:** ${secA}  |  **Section B:** ${secB}  |  **Section C:** ${secC}\n\n`;
 
     if (isTriggeredByTimeout) {
@@ -559,11 +570,13 @@ function displaySummaryDashboard(isTriggeredByTimeout) {
     const last = localStorage.getItem('lqa_candidate_last') || 'User';
     const email = localStorage.getItem('lqa_candidate_email') || 'unknown@session.com';
     const lang = localStorage.getItem('lqa_candidate_lang') || 'Unknown';
+    const sessionToken = localStorage.getItem('lqa_session_token') || '—';
     const secAMin = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_A'), 10));
     const secBMin = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_B'), 10));
     const secCMin = formatDuration(parseInt(localStorage.getItem('lqa_section_elapsed_C'), 10));
 
-    document.getElementById('summaryMetaLanguageBox').innerHTML = `${EN_COMMON['page5.languageMetaPrefix']}${lang}`;
+    document.getElementById('summaryMetaLanguageBox').innerHTML =
+        `${EN_COMMON['page5.languageMetaPrefix']}${lang} &nbsp;|&nbsp; Session token: <code>${sessionToken}</code>`;
     const contentContainer = document.getElementById('summaryContent');
     contentContainer.innerHTML = '';
 

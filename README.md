@@ -23,3 +23,9 @@ screenshots/       # Screenshot assets used in assessment questions
 Run `tools\install_build_data.bat` to install Python dependencies and compile `build_data.exe`. Then run `build_data.exe` to regenerate `l18n/lqa-data.json` from the source spreadsheet.
 
 Open `src/index.html` in a browser to use the assessment.
+
+## To-do
+
+- [ ] **Token — step 3:** URL-based access control (`?token=…` in invitation link — blocks unauthorized access at page load).
+- [ ] **Token — step 4:** Offline admin link generator (depends on step 3).
+- [ ] **Token — step 5:** Mark token as consumed after submission (anti-replay beyond BroadcastChannel).
